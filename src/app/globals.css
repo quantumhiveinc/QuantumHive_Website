@@ -1,0 +1,97 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-tt-hoves-pro), Arial, Helvetica, sans-serif; /* Use the configured font */
+}
+
+@layer components {
+  .solutions-section.bg-fade-overlay {
+    position: relative; /* Needed for absolute positioning of pseudo-elements */
+    overflow: hidden; /* Optional: Ensure pseudo-elements don't overflow */
+  }
+
+  /* Background Image with Opacity */
+  .solutions-section.bg-fade-overlay::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: url('/images/Soultions_bg.png');
+    background-size: cover;
+    background-position: center;
+    opacity: 0.45; /* Set background image opacity */
+    z-index: 0; /* Place background image behind overlay and content */
+  }
+
+  /* Gradient Overlay */
+  .solutions-section.bg-fade-overlay::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    /* Gradient from #0A0A0A to transparent and back */
+    background: linear-gradient(
+      to bottom,
+      #0A0A0A 0%,
+      rgba(10, 10, 10, 0) 25%, /* Adjust percentage for fade length */
+      rgba(10, 10, 10, 0) 75%, /* Adjust percentage for fade length */
+      #0A0A0A 100%
+    );
+    z-index: 1; /* Place overlay above background image */
+  }
+
+  /* Ensure content is above the overlay */
+  .solutions-section > div { /* Target the direct child div container */
+    position: relative;
+    z-index: 2;
+  }
+
+  .pricing-section > div { /* Target the direct child div container */
+    padding-left: 80px;
+    padding-right: 80px;
+  }
+}
+
+@layer utilities {
+  @keyframes marquee {
+    0% { transform: translateX(0%); }
+    100% { transform: translateX(-50%); } /* Adjust -50% if content isn't duplicated exactly */
+  }
+}
+
+@layer utilities {
+  @keyframes infinite-scroll {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); } /* Move by half the total width (since content is duplicated) */
+  }
+
+  .animate-infinite-scroll {
+    animation: infinite-scroll 60s linear infinite; /* Adjust duration (60s) as needed */
+  }
+
+  /* Optional: Pause animation on hover */
+  .group:hover .animate-infinite-scroll {
+    animation-play-state: paused;
+  }
+}
