@@ -6,7 +6,7 @@ const HeroSection = () => {
     <section className="hero-section container mx-auto px-6 py-16 md:py-24 flex flex-col md:flex-row items-center border-l border-r border-[#18181B]">
       {/* Left Content */}
       <div className="md:w-1/2 text-center md:text-left mb-10 md:mb-0">
-        <span className="inline-block bg-gray-800 text-gray-300 text-xs font-medium px-3 py-1 rounded-full mb-4">
+        <span className="inline-flex items-center gap-1 bg-gray-800 text-[#FEC213] text-sm font-medium px-3 py-1 rounded-full mb-4"> {/* Standardized style */}
           {/* Placeholder for 'Y' icon */}Y Trusted by Fortune 500 companies & innovative startups
         </span>
         <h1 className="text-4xl sm:text-5xl md:text-6xl font-semibold leading-tight mb-6">
@@ -14,7 +14,7 @@ const HeroSection = () => {
           with Enterprise- <br />
           Grade <span className="text-[#FDB813]">AI Solutions</span>
         </h1>
-        <p className="text-gray-400 text-lg mb-8 max-w-xl mx-auto md:mx-0">
+        <p className="mb-8 max-w-xl mx-auto md:mx-0"> {/* Removed text-gray-400 */}
           Custom AI development and implementation for growing businesses that delivers measurable ROI without enterprise complexity or cost.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">

@@ -9,11 +9,11 @@ const MeetingSection = () => {
         style={{ backgroundImage: "url('/images/MeetingSection_BG.png')" }}
       >
         {/* Removed the absolute div for background image */}
-        <div className="container mx-auto px-4 py-16 md:py-24 relative z-10 text-center border-l border-r border-[#18181B]">
-          <span className="inline-block px-4 py-1 bg-gray-800 text-sm rounded-full mb-4 border border-gray-700">
+        <div className="container mx-auto px-6 py-16 md:py-24 relative z-10 text-center border-l border-r border-[#18181B]"> {/* Set padding to px-6 py-16 md:py-24 */}
+          <span className="inline-flex items-center gap-1 bg-gray-800 text-[#FEC213] text-sm font-medium px-3 py-1 rounded-full mb-4"> {/* Standardized style */}
             Transform your business in just 30 minutes ✨
           </span>
-          <h2 className="text-3xl md:text-5xl font-semibold mb-6">
+          <h2 className="text-2xl md:text-5xl font-semibold mb-6">
             Schedule Your AI Solution Discovery Call
           </h2>
           <p className="text-lg md:text-xl text-gray-400 max-w-3xl mx-auto mb-8">
@@ -28,9 +28,9 @@ const MeetingSection = () => {
 
           {/* Calendly inline widget begin */}
           <div
-            className="calendly-inline-widget max-w-7xl mx-auto bg-[#0A0A0A]/60 rounded-lg border border-gray-700 shadow-xl backdrop-blur-[20px]"
+            className="calendly-inline-widget max-w-7xl mx-auto bg-[#0A0A0A]/60 rounded-lg border border-gray-700 shadow-xl backdrop-blur-[20px] min-w-[320px] h-[600px] md:h-[700px]"
             data-url="https://calendly.com/ceo-quantumhive/30min"
-            style={{ minWidth: '320px', height: '700px' }}
+            
           ></div>
           {/* Calendly inline widget end */}
             {/* Example structure from image (not functional) */}

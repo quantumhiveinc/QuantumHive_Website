@@ -21,7 +21,7 @@ const techLogos = [
 const TechStackSection = () => {
   return (
     <section className="bg-[#0A0A0A] tech-stack-section">
-      <div className="container mx-auto px-16 py-16 md:py-24 border-l border-r border-[#18181B]"> {/* Increased horizontal padding, added borders & vertical padding */}
+      <div className="container mx-auto px-6 py-16 md:py-24 border-l border-r border-[#18181B]"> {/* Set padding to px-6 py-16 md:py-24 */}
         <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-8 items-center">
           {/* Left Column: Text */}
           <div className="space-y-8">
@@ -41,14 +41,14 @@ const TechStackSection = () => {
             {techLogos.map((logo, index) => (
               <div
                 key={index}
-                className="flex items-center justify-center px-12 py-4 border border-[#18181B] aspect-square" // Increased px to 12, kept py-4, updated border color
+                className="flex items-center justify-center p-8 border border-[#18181B] aspect-square" // Adjusted padding
               >
                 <Image
                   src={logo.src}
                   alt={logo.alt}
-                  width={60} // Adjust size as needed
-                  height={60} // Adjust size as needed
-                  className="object-contain" // Ensure logo fits well
+                  width={80} // Added back for Next.js optimization (corresponds to md:w-20)
+                  height={80} // Added back for Next.js optimization (corresponds to md:h-20)
+                  className="object-contain w-16 h-16 md:w-20 md:h-20" // Ensure logo fits well and is responsive
                 />
               </div>
             ))}

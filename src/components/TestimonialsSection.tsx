@@ -1,12 +1,13 @@
 import Image from "next/image";
-
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faQuoteLeft } from '@fortawesome/free-solid-svg-icons';
 const TestimonialsSection = () => {
   return (
     <section className="testimonials-section bg-[#0A0A0A] border-t border-b border-[#18181B]">
       <div className="container mx-auto px-6 lg:px-48 py-16 md:py-24 text-center border-l border-r border-[#18181B]">
         {/* Section Header */}
         <div className="mb-12">
-          <span className="inline-block bg-gray-800 text-[#FEC213] text-xs font-medium px-3 py-1 rounded-full mb-4">
+          <span className="inline-flex items-center gap-1 bg-gray-800 text-[#FEC213] text-sm font-medium px-3 py-1 rounded-full mb-4"> {/* Standardized style */}
             &#x1F4AC; Client Testimonials {/* Speech Bubble Icon */}
           </span>
           {/* Optional: Add a title here if needed, like in SolutionsSection */}
@@ -21,7 +22,8 @@ const TestimonialsSection = () => {
              <div className="absolute inset-0 opacity-10 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-gray-700 via-transparent to-transparent"></div>
 
             <blockquote className="text-lg md:text-xl text-[#ECEDEE] mb-6 flex-grow relative z-10">
-              &amp;quot;Workflow Automation by Quantum Hive is revolutionizing our business process.&amp;quot;
+              <FontAwesomeIcon icon={faQuoteLeft} className="text-[#FEC213] mr-2 inline-block h-5 w-5 align-top" />
+              Workflow Automation by Quantum Hive is revolutionizing our business process.
             </blockquote>
             <div className="flex items-center mt-auto relative z-10">
               <Image
@@ -54,7 +56,8 @@ const TestimonialsSection = () => {
              <div className="absolute inset-0 opacity-10 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-gray-700 via-transparent to-transparent"></div>
 
             <blockquote className="text-lg md:text-xl text-[#ECEDEE] mb-6 flex-grow relative z-10">
-              &amp;quot;The experience of AI agents is crucial in the realm of business tools. Quantum Hive simplified processes.&amp;quot;
+              <FontAwesomeIcon icon={faQuoteLeft} className="text-[#FEC213] mr-2 inline-block h-5 w-5 align-top" />
+              The experience of AI agents is crucial in the realm of business tools. Quantum Hive simplified processes.
             </blockquote>
             <div className="flex items-center mt-auto relative z-10">
               <Image

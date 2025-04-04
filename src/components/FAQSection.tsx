@@ -1,6 +1,8 @@
 "use client"; // Add this directive for client-side hooks
 
 import React from 'react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faQuestionCircle } from '@fortawesome/free-solid-svg-icons'; // Import a suitable icon
 
 // FAQ data with dummy answers
 const faqData = [
@@ -53,14 +55,14 @@ const AccordionItem = ({ question, answer }: { question: string; answer: string 
 const FAQSection = () => {
   return (
     <section className="bg-[#0A0A0A] text-white"> {/* Removed all padding */}
-      <div className="container mx-auto px-4 py-16 md:py-24 border-l border-r border-[#18181B] grid grid-cols-1 lg:grid-cols-3 gap-12"> {/* Added py, borders */}
+      <div className="container mx-auto px-6 py-16 md:py-24 border-l border-r border-[#18181B] grid grid-cols-1 lg:grid-cols-3 gap-12"> {/* Set padding to px-6 py-16 md:py-24 */}
         {/* Left Column */}
         <div className="lg:col-span-1 px-6 md:px-8"> {/* Added internal horizontal padding */}
-          <div className="inline-flex items-center bg-gray-800/50 border border-gray-700 rounded-full px-4 py-1.5 mb-4"> {/* Adjusted padding */}
-            {/* Placeholder Question Mark Icon */}
-            <svg className="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd"></path></svg>
-            <span className="ml-2 text-sm text-gray-300 font-medium">Common questions</span> {/* Added font-medium */}
-          </div>
+          {/* Standardized Section Header Span */}
+          <span className="inline-flex items-center gap-1 bg-gray-800 text-[#FEC213] text-sm font-medium px-3 py-1 rounded-full mb-4">
+             <FontAwesomeIcon icon={faQuestionCircle} className="h-4 w-4" /> {/* Use FontAwesome icon */}
+             Common questions
+          </span>
           <h2 className="text-5xl font-medium mb-4">FAQs</h2>
           <p className="text-gray-400 mb-8">Questions from global businesses</p>
           <div className="flex space-x-4">

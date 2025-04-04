@@ -1,8 +1,10 @@
 'use client'; // Required for useEffect and useRef
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger'; // Import ScrollTrigger if needed by matchMedia internally or for future use
+gsap.registerPlugin(ScrollTrigger); // Register plugin if needed
 
 const BusinessTweetsSection = () => {
   // Static data for tweets (as requested)
@@ -73,46 +75,56 @@ const BusinessTweetsSection = () => {
 const column1Ref = useRef<HTMLDivElement>(null);
 const column2Ref = useRef<HTMLDivElement>(null);
 
+// State to track screen size for conditional rendering
+const [isLargeScreen, setIsLargeScreen] = useState(false);
+
+// Effect to check screen size on mount and resize
 useEffect(() => {
-  const ctx = gsap.context(() => {
+  const checkScreenSize = () => {
+    setIsLargeScreen(window.innerWidth >= 1024); // lg breakpoint
+  };
+
+  // Initial check
+  checkScreenSize();
+
+  // Add resize listener
+  window.addEventListener('resize', checkScreenSize);
+
+  // Cleanup listener on unmount
+  return () => window.removeEventListener('resize', checkScreenSize);
+}, []);
+
+
+// Effect for GSAP animation, now depends on isLargeScreen implicitly
+// because the refs will only exist when isLargeScreen is true
+useEffect(() => {
+  // Only run GSAP setup if on large screen (when refs are available)
+  if (!isLargeScreen) return;
+
+  const mm = gsap.matchMedia();
+
+  mm.add("(min-width: 1024px)", () => {
     const col1 = column1Ref.current;
     const col2 = column2Ref.current;
 
-    if (!col1 || !col2) return;
+    if (!col1 || !col2) {
+      console.error('BusinessTweetsSection: Column refs not found on large screen!');
+      return;
+    }
 
-    // Animate using yPercent for potentially smoother looping
-    // Since content is duplicated, total height is 200%, so we animate by 50%
+    const tween1 = gsap.fromTo(col1, { yPercent: 0 }, { yPercent: -50, ease: 'none', duration: 40, repeat: -1 });
+    const tween2 = gsap.fromTo(col2, { yPercent: -50 }, { yPercent: 0, ease: 'none', duration: 40, repeat: -1 });
 
-    // Column 1: Scroll Down
-    gsap.fromTo(
-      col1,
-      { yPercent: 0 },
-      {
-        yPercent: -50,
-        ease: 'none',
-        duration: 20, // 20 second duration
-        repeat: -1,
-      }
-    );
+    return () => {
+      tween1.kill();
+      tween2.kill();
+      gsap.set([col1, col2], { clearProps: "transform" });
+    };
+  });
 
-    // Column 2: Scroll Up
-    gsap.fromTo(
-      col2,
-      { yPercent: -50 }, // Start from the duplicated content position
-      {
-        yPercent: 0,
-        ease: 'none',
-        duration: 20, // 20 second duration
-        repeat: -1,
-      }
-    );
+  return () => mm.revert();
 
-  }, [column1Ref, column2Ref]); // Scope the context to the refs
-
-  // Cleanup function provided by gsap.context()
-  return () => ctx.revert();
-
-}, [column1Tweets, column2Tweets]); // Re-run if tweet data changes
+}, [isLargeScreen, column1Tweets, column2Tweets]); // Add isLargeScreen dependency
 
 
   return (
@@ -124,15 +136,16 @@ useEffect(() => {
        <div className="absolute inset-0 z-10 bg-gradient-to-b from-[#0A0A0A] via-[#0A0A0A]/0 to-[#0A0A0A]"></div>
 
 
-      <div className="container mx-auto px-4 py-16 md:py-24 relative z-20 border-l border-r border-[#18181B]">
+      <div className="container mx-auto px-6 py-16 md:py-24 relative z-20 border-l border-r border-[#18181B]"> {/* Set padding to px-6 py-16 md:py-24 */}
         {/* Added flex container for side-by-side layout on large screens */}
         <div className="flex flex-col lg:flex-row lg:items-center gap-12 lg:gap-16">
           {/* Text Content Column */}
           <div className="flex flex-col items-start text-left lg:w-5/12 xl:w-1/3">
-           <div className="inline-flex items-center gap-2 border border-[#3F3F46] rounded-full px-4 py-1.5 mb-4 text-sm">
-             <Image src="/images/tweets/business-tweets-icon.svg" alt="Tweets Icon" width={16} height={16} />
-             <span className="text-[#ECEDEE] font-normal">Business Tweets</span>
-           </div>
+           {/* Standardized Section Header Span */}
+           <span className="inline-flex items-center gap-1 bg-gray-800 text-[#FEC213] text-sm font-medium px-3 py-1 rounded-full mb-4">
+             <Image src="/images/tweets/business-tweets-icon.svg" alt="Tweets Icon" width={16} height={16} className="h-4 w-4" /> {/* Ensure consistent icon size */}
+             Business Tweets
+           </span>
            <h2 className="text-4xl md:text-5xl font-normal text-[#ECEDEE] mb-4 max-w-3xl">
              Businesses are automating repetitive tasks with Gen AI
            </h2>
@@ -152,44 +165,54 @@ useEffect(() => {
           </div>
 
           {/* Scrolling Tweets Columns Container */}
-          <div className="flex gap-6 lg:w-7/12 xl:w-2/3 h-[600px] overflow-hidden"> {/* Added fixed height and overflow */}
-
-            {/* Column 1: Scrolling Down */}
-            <div className="w-1/2 h-full relative">
-              <div
-                className="absolute top-0 left-0 w-full h-full"
-                style={{
-                  maskImage: 'linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%)',
-                  WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%)',
-                }}
-              >
-                <div ref={column1Ref} className="flex flex-col gap-6"> {/* Removed animation class, added ref */}
-                  {/* Render tweets twice for infinite loop */}
-                  {[...column1Tweets, ...column1Tweets].map((tweet, index) => (
-                    <TweetCard key={`${tweet.id}-${index}`} tweet={tweet} />
-                  ))}
+          <div className="lg:w-7/12 xl:w-2/3"> {/* Container for conditional rendering */}
+            {isLargeScreen ? (
+              // Desktop/Large Screen Layout (with animation elements)
+              <div className="flex flex-row gap-6 h-[600px] overflow-hidden">
+                {/* Column 1 */}
+                <div className="w-1/2 h-full relative">
+                  <div
+                    className="absolute top-0 left-0 w-full h-full" // Mask is visible by default on large screens
+                    style={{
+                      maskImage: 'linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%)',
+                      WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%)',
+                    }}
+                  >
+                    <div ref={column1Ref} className="flex flex-col gap-6">
+                      {[...column1Tweets, ...column1Tweets].map((tweet, index) => (
+                        // Ensure unique keys for duplicated items
+                        <TweetCard key={`${tweet.id}-${index}-col1-lg`} tweet={tweet} />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                {/* Column 2 */}
+                <div className="w-1/2 h-full relative">
+                  <div
+                    className="absolute top-0 left-0 w-full h-full" // Mask is visible by default on large screens
+                    style={{
+                      maskImage: 'linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%)',
+                      WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%)',
+                    }}
+                  >
+                    <div ref={column2Ref} className="flex flex-col gap-6">
+                      {[...column2Tweets, ...column2Tweets].map((tweet, index) => (
+                         // Ensure unique keys for duplicated items
+                        <TweetCard key={`${tweet.id}-${index}-col2-lg`} tweet={tweet} />
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-
-            {/* Column 2: Scrolling Up */}
-             <div className="w-1/2 h-full relative">
-               <div
-                 className="absolute top-0 left-0 w-full h-full"
-                 style={{
-                   maskImage: 'linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%)',
-                   WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%)',
-                 }}
-               >
-                 <div ref={column2Ref} className="flex flex-col gap-6"> {/* Removed animation class, added ref */}
-                   {/* Render tweets twice for infinite loop */}
-                   {[...column2Tweets, ...column2Tweets].map((tweet, index) => (
-                     <TweetCard key={`${tweet.id}-${index}`} tweet={tweet} />
-                   ))}
-                 </div>
-               </div>
-             </div>
-
+            ) : (
+              // Mobile/Small Screen Layout (static)
+              <div className="flex flex-col gap-6">
+                {/* Render original tweets simply stacked */}
+                {tweets.map((tweet) => (
+                  <TweetCard key={`${tweet.id}-sm`} tweet={tweet} />
+                ))}
+              </div>
+            )}
           </div>
         </div> {/* Close flex container */}
       </div>

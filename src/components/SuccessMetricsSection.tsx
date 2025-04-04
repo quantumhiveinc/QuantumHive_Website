@@ -13,7 +13,7 @@ const metrics = [
 const SuccessMetricsSection = () => {
   return (
     <section className="success-metrics-section bg-[#0A0A0A] text-white border-b border-[#18181B]"> {/* Added border-b here */}
-      <div className="container mx-auto px-4 border-l border-r border-[#18181B] py-16 md:py-24"> {/* Removed border-b, kept l/r */}
+      <div className="container mx-auto px-6 py-16 md:py-24 border-l border-r border-[#18181B]"> {/* Set padding to px-6 py-16 md:py-24 */}
         <h2 className="text-3xl md:text-4xl font-medium text-center mb-12 md:mb-16">
           Our <span className="text-yellow-400">Success</span> Metrics
         </h2>
@@ -30,7 +30,7 @@ const SuccessMetricsSection = () => {
                   scrollSpyOnce // Only animates once
                 />
               </div>
-              <p className="text-sm md:text-base text-gray-300">{metric.label}</p>
+              <p className="text-lg text-gray-300">{metric.label}</p>
             </div>
           ))}
         </div>

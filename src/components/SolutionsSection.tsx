@@ -7,7 +7,7 @@ const SolutionsSection = () => {
       <div className="container mx-auto px-6 py-16 md:py-24 text-center border-l border-r border-[#18181B]">
         {/* Section Header */}
         <div className="mb-12">
-           <span className="inline-block bg-gray-800 text-gray-300 text-xs font-medium px-3 py-1 rounded-full mb-4">
+           <span className="inline-flex items-center gap-1 bg-gray-800 text-[#FEC213] text-sm font-medium px-3 py-1 rounded-full mb-4"> {/* Standardized style */}
              &#x2699; Our Solutions {/* Gear Icon */}
            </span>
           <h2 className="text-4xl md:text-5xl font-semibold mb-4">&quot;AI Solutions Built for Your Success&quot;</h2>
@@ -30,7 +30,7 @@ const SolutionsSection = () => {
               />
               NexusAI
             </h3>
-            <p className="text-[#ECEDEE] text-sm leading-[1.5em] mb-4 flex-grow">
+            <p className="text-[#ECEDEE] text-lg leading-[1.5em] mb-4 flex-grow">
               Intelligent business automation suite that streamlines workflows, manages communications, and processes documents across departments. Eliminates repetitive tasks while enhancing team productivity and decision-making.
             </p>
             {/* Visual from Figma */}
@@ -44,7 +44,7 @@ const SolutionsSection = () => {
             <h3 className="text-xl font-normal text-[#FEC213] mb-3 flex items-center">
                {/* Placeholder Icon */} <span className="mr-2">&#x1F50E;</span> InsightIQ {/* Magnifying Glass */} {/* TODO: Replace icon */}
             </h3>
-            <p className="text-[#ECEDEE] text-sm leading-[1.5em] mb-4 flex-grow">
+            <p className="text-[#ECEDEE] text-lg leading-[1.5em] mb-4 flex-grow">
               Advanced predictive analytics platform delivering actionable business intelligence through customizable dashboards and automated reporting. Transforms complex data into clear insights that drive strategic growth initiatives.
             </p>
             {/* Placeholder Visual */}
@@ -58,7 +58,7 @@ const SolutionsSection = () => {
             <h3 className="text-xl font-normal text-[#FEC213] mb-3 flex items-center">
                {/* Placeholder Icon */} <span className="mr-2">&lt;/&gt;</span> EngageConnect {/* Code Icon */} {/* TODO: Replace icon */}
             </h3>
-            <p className="text-[#ECEDEE] text-sm leading-[1.5em] mb-4 flex-grow">
+            <p className="text-[#ECEDEE] text-lg leading-[1.5em] mb-4 flex-grow">
               Omnichannel customer experience solution that personalizes interactions across all touchpoints. Creates meaningful customer conversations that increase satisfaction, loyalty, and lifetime value.
             </p>
             {/* Placeholder Visual */}
@@ -72,7 +72,7 @@ const SolutionsSection = () => {
             <h3 className="text-xl font-normal text-[#FEC213] mb-3 flex items-center">
                {/* Placeholder Icon */} <span className="mr-2">&#x25A6;</span> SocialPulse {/* Square Grid Icon */} {/* TODO: Replace icon */}
             </h3>
-            <p className="text-[#ECEDEE] text-sm leading-[1.5em] mb-4 flex-grow">
+            <p className="text-[#ECEDEE] text-lg leading-[1.5em] mb-4 flex-grow">
               AI-powered social media intelligence system that creates, optimizes, and analyzes content performance across platforms. Ensures your social presence drives engagement while delivering measurable marketing results.
             </p>
             {/* Placeholder Visual */}
@@ -86,7 +86,7 @@ const SolutionsSection = () => {
             <h3 className="text-xl font-normal text-[#FEC213] mb-3 flex items-center">
                {/* Placeholder Icon */} <span className="mr-2">&#x1F3A4;</span> ProspectRadar {/* Microphone Icon */} {/* TODO: Replace icon */}
             </h3>
-            <p className="text-[#ECEDEE] text-sm leading-[1.5em] mb-4 flex-grow">
+            <p className="text-[#ECEDEE] text-lg leading-[1.5em] mb-4 flex-grow">
               Intelligent sales development platform that identifies, engages, and qualifies high-value prospects. Accelerates pipeline growth by focusing your sales team on the most promising opportunities.
             </p>
             {/* Placeholder Visual */}
@@ -100,7 +100,7 @@ const SolutionsSection = () => {
             <h3 className="text-xl font-normal text-[#FEC213] mb-3 flex items-center">
                {/* Placeholder Icon */} <span className="mr-2">&#x26D3;</span> ComplianceGuard {/* Chain Icon (Alt) */} {/* TODO: Replace icon */}
             </h3>
-            <p className="text-[#ECEDEE] text-sm leading-[1.5em] mb-4 flex-grow">
+            <p className="text-[#ECEDEE] text-lg leading-[1.5em] mb-4 flex-grow">
               Regulatory intelligence solution that monitors requirements, analyzes documents, and mitigates compliance risks. Simplifies complex regulatory landscapes while reducing the resources needed for compliance.
             </p>
             {/* Placeholder Visual */}

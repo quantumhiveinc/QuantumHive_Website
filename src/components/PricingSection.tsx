@@ -176,9 +176,9 @@ const PricingSection = () => {
         // Section has no padding Y, container has padding Y and borders
         <section className="pricing-section relative text-white bg-[#0A0A0A] border-t border-[#18181B]" style={{ backgroundImage: "url('/images/PriceSectionBG.png')", backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' }}> {/* Added border-t */}
              <div className="absolute inset-0 bg-gradient-to-b from-[#0A0A0A] via-transparent to-[#0A0A0A]"></div> {/* Gradient fades to/from background color */}
-             <div className="relative container mx-auto px-4 py-16 md:py-24 border-l border-r border-[#18181B]"> {/* Removed border, border-t-0, border-b-0. Kept border-l, border-r */}
+             <div className="relative container mx-auto px-6 py-16 md:py-24 border-l border-r border-[#18181B]"> {/* Set padding to px-6 py-16 md:py-24 */}
                 <div className="text-center mb-12 md:mb-16">
-                    <span className="inline-block bg-gray-800 text-yellow-400 text-xs font-semibold px-3 py-1 rounded-full mb-4">
+                    <span className="inline-flex items-center gap-1 bg-gray-800 text-[#FEC213] text-sm font-medium px-3 py-1 rounded-full mb-4"> {/* Standardized style */}
                         Pricing
                     </span>
                     <h2 className="text-3xl md:text-5xl font-semibold mb-4">

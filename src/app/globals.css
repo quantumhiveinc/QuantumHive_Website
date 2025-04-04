@@ -1,4 +1,11 @@
 @tailwind base;
+
+@layer base {
+  p {
+    @apply text-lg text-gray-400; /* Apply base size and color */
+  }
+}
+
 @tailwind components;
 @tailwind utilities;
 
@@ -67,9 +74,11 @@ body {
     z-index: 2;
   }
 
-  .pricing-section > div { /* Target the direct child div container */
-    padding-left: 80px;
-    padding-right: 80px;
+  @media (min-width: 1024px) { /* Apply only on large screens (lg breakpoint) */
+    .pricing-section > div { /* Target the direct child div container */
+      padding-left: 80px;
+      padding-right: 80px;
+    }
   }
 }
 
