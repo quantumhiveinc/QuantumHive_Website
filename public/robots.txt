@@ -1,0 +1,9 @@
+# *
+User-agent: *
+Allow: /
+
+# Host
+Host: https://www.quantumhive.us
+
+# Sitemaps
+Sitemap: https://www.quantumhive.us/sitemap.xml

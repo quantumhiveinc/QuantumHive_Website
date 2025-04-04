@@ -20,7 +20,7 @@ const techLogos = [
 
 const TechStackSection = () => {
   return (
-    <section className="bg-[#0A0A0A] tech-stack-section">
+    <section id="tech-stack" className="bg-[#0A0A0A] tech-stack-section">
       <div className="container mx-auto px-6 py-16 md:py-24 border-l border-r border-[#18181B]"> {/* Set padding to px-6 py-16 md:py-24 */}
         <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-8 items-center">
           {/* Left Column: Text */}

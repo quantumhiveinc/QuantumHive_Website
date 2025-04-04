@@ -5,6 +5,7 @@ const MeetingSection = () => {
   return (
     <>
       <section
+        id="contact" // Added ID here
         className="meeting-section bg-gradient-to-b from-gray-900 to-black text-white relative overflow-hidden bg-cover bg-center border-b border-[#18181B]"
         style={{ backgroundImage: "url('/images/MeetingSection_BG.png')" }}
       >

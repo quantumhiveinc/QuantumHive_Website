@@ -1,7 +1,7 @@
 // website/src/components/PricingSection.tsx
 
 import React from 'react';
-// import Image from 'next/image'; // Assuming Next.js for Image component - Removed as unused
+import Script from 'next/script'; // Import Script component
 
 // Placeholder icons - replace with actual paths or SVG components if available
 const CheckIcon = () => <span className="text-yellow-400 mr-2">✓</span>;
@@ -172,9 +172,56 @@ const PricingSection = () => {
         buttonText: "Contact sales",
     };
 
+    // Combine all plans for schema generation
+    const allPlans = [...standardPlans, enterprisePlan];
+
+    // Define the Offer JSON-LD structured data
+    const offersSchema = {
+        "@context": "https://schema.org",
+        "@graph": allPlans.map(plan => {
+            // Parse price string to number, removing '$' and ','
+            const priceValue = plan.price ? parseFloat(plan.price.replace(/[$,]/g, '')) : undefined;
+            return {
+                "@type": "Offer",
+                "name": plan.title,
+                "description": plan.description,
+                // Add priceSpecification only if priceValue is a valid number
+                ...(priceValue && !isNaN(priceValue) && {
+                    "priceSpecification": {
+                        "@type": "PriceSpecification",
+                        "price": priceValue,
+                        "priceCurrency": "USD" // Assuming USD, adjust if needed
+                    }
+                }),
+                // Indicate custom pricing for enterprise
+                ...(plan.isEnterprise && {
+                    "eligibleQuantity": { // Example: Indicate it's for larger orgs
+                        "@type": "QuantitativeValue",
+                        "minValue": 200, // Based on description
+                        "unitText": "employees"
+                    },
+                    // Could add more details about custom pricing if available
+                }),
+                "itemOffered": {
+                    "@type": "Service", // Or Product, depending on what's offered
+                    "name": plan.title, // Use plan title as a simple reference
+                    "description": plan.description,
+                    // Ideally, link to specific services from SolutionsSection using @id if possible
+                }
+            };
+        })
+    };
+
+
     return (
         // Section has no padding Y, container has padding Y and borders
-        <section className="pricing-section relative text-white bg-[#0A0A0A] border-t border-[#18181B]" style={{ backgroundImage: "url('/images/PriceSectionBG.png')", backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' }}> {/* Added border-t */}
+        <section id="pricing" className="pricing-section relative text-white bg-[#0A0A0A] border-t border-[#18181B]" style={{ backgroundImage: "url('/images/PriceSectionBG.png')", backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' }}> {/* Added border-t */}
+             {/* Add the Offer Schema */}
+             <Script
+                id="pricing-offers-schema"
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(offersSchema) }}
+             />
              <div className="absolute inset-0 bg-gradient-to-b from-[#0A0A0A] via-transparent to-[#0A0A0A]"></div> {/* Gradient fades to/from background color */}
              <div className="relative container mx-auto px-6 py-16 md:py-24 border-l border-r border-[#18181B]"> {/* Set padding to px-6 py-16 md:py-24 */}
                 <div className="text-center mb-12 md:mb-16">

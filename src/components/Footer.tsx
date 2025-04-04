@@ -13,20 +13,20 @@ const Footer = () => {
   ];
 
   const sitemapLinks = [
-    { name: 'Features', href: '#' },
-    { name: 'Pricing', href: '#' },
-    { name: 'FAQs', href: '#' },
+    { name: 'Features', href: '/#solutions' }, // Mapped to Solutions
+    { name: 'Pricing', href: '/#pricing' },
+    { name: 'FAQs', href: '/#faq' },
   ];
 
   const resourcesLinks = [
-    { name: 'Documentation', href: '#' },
-    { name: 'AI localization', href: '#' },
-    { name: 'Launch Week 0', href: '#' },
+    { name: 'Documentation', href: '#' }, // No specific section yet
+    { name: 'AI localization', href: '#' }, // No specific section yet
+    { name: 'Launch Week 0', href: '#' }, // No specific section yet
   ];
 
   const legalLinks = [
-    { name: 'Privacy Policy', href: '#' },
-    { name: 'Terms of Service', href: '#' },
+    { name: 'Privacy Policy', href: '#' }, // No specific page yet
+    { name: 'Terms of Service', href: '#' }, // No specific page yet
   ];
 
   return (

@@ -57,9 +57,8 @@ const BusinessTweetsSection = () => {
            <Image
              src={tweet.avatar}
              alt={tweet.author}
-             layout="fill"
-             objectFit="cover"
-             className="rounded-full"
+             fill // Use fill instead of layout="fill"
+             className="rounded-full object-cover" // Add object-cover for equivalent styling
            />
          </div>
         <div>
@@ -128,7 +127,7 @@ useEffect(() => {
 
 
   return (
-    <section className="business-tweets bg-[#0A0A0A] bg-[url('/images/Business_Tweets_bg.png')] bg-cover bg-center relative overflow-hidden border-b border-t border-[#18181B]">
+    <section id="tweets" className="business-tweets bg-[#0A0A0A] bg-[url('/images/Business_Tweets_bg.png')] bg-cover bg-center relative overflow-hidden border-b border-t border-[#18181B]">
       {/* Background elements - simplified for now */}
       <div className="absolute inset-0 z-0 opacity-50">
          {/* Placeholder for background image/gradient if needed */}

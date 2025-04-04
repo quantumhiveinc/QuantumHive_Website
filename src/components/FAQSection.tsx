@@ -3,6 +3,7 @@
 import React from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faQuestionCircle } from '@fortawesome/free-solid-svg-icons'; // Import a suitable icon
+import Script from 'next/script'; // Import Script component
 
 // FAQ data with dummy answers
 const faqData = [
@@ -53,8 +54,28 @@ const AccordionItem = ({ question, answer }: { question: string; answer: string 
 };
 
 const FAQSection = () => {
+  // Define the FAQPage JSON-LD structured data
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": faqData.map(item => ({
+      "@type": "Question",
+      "name": item.question,
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": item.answer
+      }
+    }))
+  };
+
   return (
-    <section className="bg-[#0A0A0A] text-white"> {/* Removed all padding */}
+    <section id="faq" className="bg-[#0A0A0A] text-white"> {/* Removed all padding */}
+      {/* Add the FAQPage Schema */}
+      <Script
+        id="faq-schema"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+      />
       <div className="container mx-auto px-6 py-16 md:py-24 border-l border-r border-[#18181B] grid grid-cols-1 lg:grid-cols-3 gap-12"> {/* Set padding to px-6 py-16 md:py-24 */}
         {/* Left Column */}
         <div className="lg:col-span-1 px-6 md:px-8"> {/* Added internal horizontal padding */}

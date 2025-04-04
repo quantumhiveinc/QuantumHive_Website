@@ -12,7 +12,7 @@ const metrics = [
 
 const SuccessMetricsSection = () => {
   return (
-    <section className="success-metrics-section bg-[#0A0A0A] text-white border-b border-[#18181B]"> {/* Added border-b here */}
+    <section id="metrics" className="success-metrics-section bg-[#0A0A0A] text-white border-b border-[#18181B]"> {/* Added border-b here */}
       <div className="container mx-auto px-6 py-16 md:py-24 border-l border-r border-[#18181B]"> {/* Set padding to px-6 py-16 md:py-24 */}
         <h2 className="text-3xl md:text-4xl font-medium text-center mb-12 md:mb-16">
           Our <span className="text-yellow-400">Success</span> Metrics

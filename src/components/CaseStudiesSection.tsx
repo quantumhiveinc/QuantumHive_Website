@@ -1,4 +1,5 @@
 import React from 'react';
+import Script from 'next/script'; // Import Script component
 
 const caseStudies = [
   {
@@ -28,8 +29,29 @@ const caseStudies = [
 const duplicatedStudies = [...caseStudies, ...caseStudies]; // Duplicate the array
 
 const CaseStudiesSection = () => {
+  // Define the Quotation JSON-LD structured data
+  const quotationsSchema = {
+    "@context": "https://schema.org",
+    "@graph": caseStudies.map(study => ({ // Use original caseStudies array for schema
+      "@type": "Quotation",
+      "text": study.quote,
+      "spokenByCharacter": {
+        "@type": "Person",
+        "name": study.author,
+        "jobTitle": study.title
+      }
+      // Potential additions: citation (link to full case study if available)
+    }))
+  };
+
   return (
-    <section className="bg-[#0A0A0A] text-white py-16 md:py-24 overflow-hidden relative group border-t border-b border-[#18181B]"> {/* Added group for hover pause, updated bg, added borders */}
+    <section id="case-studies" className="bg-[#0A0A0A] text-white py-16 md:py-24 overflow-hidden relative group border-t border-b border-[#18181B]"> {/* Added group for hover pause, updated bg, added borders */}
+      {/* Add the Quotation Schema */}
+      <Script
+        id="case-studies-schema"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(quotationsSchema) }}
+      />
       <div className="container mx-auto text-center mb-10 md:mb-16 px-4">
          <div className="inline-flex items-center justify-center bg-gray-800/50 border border-gray-700 rounded-full px-4 py-2">
            <span className="text-yellow-400 mr-2 text-lg font-semibold">”</span>
