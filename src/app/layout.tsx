@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { headers } from 'next/headers'; // Import headers
 import "./globals.css";
+import Header from '@/components/Header'; // Import Header
+import Footer from '@/components/Footer'; // Import Footer
 import Script from 'next/script'; // Import Script component
+import AuthProvider from '@/components/AuthProvider'; // Import AuthProvider
+import { Toaster } from "sonner"; // Import Toaster directly
 const ttHovesPro = localFont({
   src: [
     {
@@ -28,17 +33,27 @@ export const metadata: Metadata = {
   description: "Quantum Hive delivers productized AI solutions for mid-market companies. Get accessible, ROI-driven AI development without enterprise complexity. Explore AI agents.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({ // Keep async
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const headerList = await headers(); // Add await
+  // Read the custom header set by the middleware
+  const pathname = headerList.get('x-pathname') || '';
+  // Check if the path starts with /admin (this includes /admin/login)
+  const isAdminRoute = pathname.startsWith('/admin');
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning={true}>
       <body
-        className={`${ttHovesPro.variable} font-sans antialiased`}
+        className={`${ttHovesPro.variable} font-sans antialiased flex flex-col min-h-screen bg-[#0A0A0A] text-[#EDEDED]`}
       >
-        {children}
+        <AuthProvider> {/* Wrap content with AuthProvider */}
+          {!isAdminRoute && <Header />} {/* Conditionally render Header */}
+          <main className="flex-grow">{children}</main> {/* Wrap children in main for semantic structure and flex-grow */}
+          {!isAdminRoute && <Footer />} {/* Conditionally render Footer */}
+          <Toaster richColors position="top-right" /> {/* Add Toaster here */}
+        </AuthProvider>
         <Script
           id="schema-markup"
           type="application/ld+json"
@@ -90,3 +105,4 @@ export default function RootLayout({
     </html>
   );
 }
+

@@ -1,11 +1,9 @@
 import type { Metadata } from "next"; // Import Metadata type
-import Header from "@/components/Header";
 import HeroSection from "@/components/HeroSection";
 import ClientLogos from "@/components/ClientLogos";
 import SolutionsSection from "@/components/SolutionsSection";
 import TechStackSection from "@/components/TechStackSection"; // Added import
 import TestimonialsSection from "@/components/TestimonialsSection"; // Added import
-import Footer from "@/components/Footer";
 import BusinessTweetsSection from "@/components/BusinessTweetsSection"; // Added import
 import SuccessMetricsSection from "@/components/SuccessMetricsSection"; // Added import
 import PricingSection from "@/components/PricingSection"; // Added Pricing section import
@@ -63,7 +61,6 @@ export const metadata: Metadata = {
 export default function Home() {
   return (
     <div className="flex flex-col min-h-screen bg-[#0A0A0A] text-[#EDEDED] font-sans">
-      <Header />
       <main>
         <HeroSection />
         <ClientLogos />
@@ -78,7 +75,6 @@ export default function Home() {
         <FAQSection /> {/* Added FAQ section */}
         <PartnersSection /> {/* Added Partners section */}
       </main>
-      <Footer />
     </div>
   );
 }

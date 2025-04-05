@@ -1,0 +1,57 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql" // Set the provider to PostgreSQL
+  url      = env("DATABASE_URL") // Loads the connection string from .env
+}
+
+// Model for Blog Posts
+model BlogPost {
+  id          Int      @id @default(autoincrement()) // Or use cuid() or uuid() if preferred
+  title       String
+  slug        String   @unique // Unique slug for URL identification
+  description String?  // Optional short description/excerpt
+  content     String?  // Main content, consider TEXT type in SQL or JSONB for structured data
+  published   Boolean  @default(false) // Flag to control visibility
+  publishedAt DateTime? // Optional timestamp for when it was published
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("blog_posts") // Optional: Define the table name explicitly
+}
+
+// Model for Case Studies
+model CaseStudy {
+  id          Int      @id @default(autoincrement())
+  title       String
+  slug        String   @unique
+  description String?
+  content     String?
+  published   Boolean  @default(false)
+  publishedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  // Add specific fields like clientName, industry, results later
+
+  @@map("case_studies")
+}
+
+// Model for Industries
+model Industry {
+  id          Int      @id @default(autoincrement())
+  title       String   @unique // Industry name should be unique
+  slug        String   @unique
+  description String?
+  content     String?  // Detailed description of the industry focus
+  published   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  // Add specific fields like associatedServices, representativeImage later
+
+  @@map("industries")
+}

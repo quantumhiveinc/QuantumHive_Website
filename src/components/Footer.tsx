@@ -13,9 +13,17 @@ const Footer = () => {
   ];
 
   const sitemapLinks = [
-    { name: 'Features', href: '/#solutions' }, // Mapped to Solutions
-    { name: 'Pricing', href: '/#pricing' },
-    { name: 'FAQs', href: '/#faq' },
+    { name: 'Home', href: '/' },
+    { name: 'About', href: '/about' },
+    { name: 'Services', href: '/services' },
+    { name: 'Case Studies', href: '/case-studies' },
+    { name: 'Industries', href: '/industries' },
+    { name: 'Blog', href: '/blog' },
+    { name: 'Contact', href: '/contact' },
+    // Links to homepage sections (can keep if desired)
+    // { name: 'Features', href: '/#solutions' },
+    // { name: 'Pricing', href: '/#pricing' },
+    // { name: 'FAQs', href: '/#faq' },
   ];
 
   const resourcesLinks = [

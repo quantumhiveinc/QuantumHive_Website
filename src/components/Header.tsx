@@ -12,12 +12,12 @@ const Header = () => {
   };
 
   const navLinks = [
-    { name: "Services", href: "/#solutions" },
-    { name: "About", href: "/#testimonials" }, // Pointing to testimonials as proxy
-    { name: "Case Studies", href: "/#case-studies" },
-    { name: "Industries", href: "#" }, // No specific section yet
-    { name: "Blog", href: "#" }, // No specific section/page yet
-    { name: "Contact", href: "/#contact" },
+    { name: "Services", href: "/services" },
+    { name: "About", href: "/about" },
+    { name: "Case Studies", href: "/case-studies" },
+    { name: "Industries", href: "/industries" },
+    { name: "Blog", href: "/blog" },
+    { name: "Contact", href: "/contact" },
   ];
 
   // Placeholder for the repeating banner items
