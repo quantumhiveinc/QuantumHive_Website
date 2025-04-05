@@ -1,14 +1,17 @@
+"use client";
+
 // website/src/components/PricingSection.tsx
 
-import React from 'react';
-import Script from 'next/script'; // Import Script component
+import React, { useState } from 'react'; // Import useState
+import Script from 'next/script';
+import { PricingLeadCaptureModal } from './PricingLeadCaptureModal'; // Import the modal
+import { Button } from './ui/button'; // Import Button for the CTA
 
 // Placeholder icons - replace with actual paths or SVG components if available
 const CheckIcon = () => <span className="text-yellow-400 mr-2">✓</span>;
 const InfoIcon = () => <span className="text-gray-500 ml-1">ⓘ</span>;
 const ArrowRightIcon = () => <span className="ml-2">→</span>;
 const StarIcon = () => <span className="mr-1">⭐</span>; // Placeholder
-// Removed unused LockIcon
 
 interface Feature {
     text: string;
@@ -21,12 +24,12 @@ interface PricingCardProps {
     price?: string; // Optional for Enterprise
     features: Feature[];
     buttonText: string;
-    buttonLink?: string;
     isEnterprise?: boolean;
     customPricing?: boolean;
+    onCTAClick: (planName: string) => void; // Add callback prop
 }
 
-const PricingCard: React.FC<PricingCardProps> = ({ title, description, price, features, buttonText, buttonLink = "#", isEnterprise = false, customPricing = false }) => (
+const PricingCard: React.FC<PricingCardProps> = ({ title, description, price, features, buttonText, isEnterprise = false, customPricing = false, onCTAClick }) => (
     <div className="bg-[#0A0A0A]/40 backdrop-blur-[20px] border border-[#18181B] rounded-xl p-6 md:p-8 flex flex-col h-full transform-gpu">
         <h3 className="text-xl md:text-2xl font-semibold text-yellow-400 mb-2 flex items-center">
             {title}
@@ -47,7 +50,6 @@ const PricingCard: React.FC<PricingCardProps> = ({ title, description, price, fe
         {/* Feature List - Different layout for Enterprise */}
         {isEnterprise ? (
              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3 text-gray-300 text-sm mb-8 flex-grow">
-                 {/* Chunk features into columns based on Figma layout */}
                  {chunkArray(features, Math.ceil(features.length / 2)).map((columnFeatures, colIndex) => (
                      <ul key={colIndex} className="space-y-3">
                          {columnFeatures.map((feature: Feature, index: number) => (
@@ -75,17 +77,14 @@ const PricingCard: React.FC<PricingCardProps> = ({ title, description, price, fe
                 ))}
             </ul>
         )}
-        <a
-            href={buttonLink}
-            className={`mt-auto inline-flex items-center justify-center px-6 py-3 border border-yellow-400 rounded-lg text-sm font-medium text-yellow-400 hover:bg-yellow-400 hover:text-black transition-colors`} /* Removed enterprise-specific gray styles */
+        <Button
+            onClick={() => onCTAClick(title)}
+            variant="outline"
+            className={`mt-auto w-full inline-flex items-center justify-center px-6 py-3 border border-transparent rounded-lg text-sm font-medium bg-[#FFD700] text-black hover:bg-yellow-500 transition-colors`}
         >
-            {/* Removed LockIcon for enterprise */}
             {buttonText}
-            {!isEnterprise && <ArrowRightIcon />} {/* Keep arrow only for non-enterprise */}
-        </a>
-        {isEnterprise && (
-             <a href="#" className="text-center text-gray-400 text-xs mt-3 hover:text-yellow-400">Get a custom quote</a>
-        )}
+            {!isEnterprise && <ArrowRightIcon />}
+        </Button>
     </div>
 );
 
@@ -100,7 +99,27 @@ const chunkArray = (array: Feature[], size: number): Feature[][] => {
 
 
 const PricingSection = () => {
-    const standardPlans: PricingCardProps[] = [
+    // State for modal
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+
+    // Function to open the modal
+    const openModal = (planName: string) => {
+        setSelectedPlan(planName);
+        setIsModalOpen(true);
+    };
+
+    // Function to close the modal
+    const closeModal = () => {
+        setIsModalOpen(false);
+        setSelectedPlan(null); // Reset selected plan on close
+    };
+
+    // Define plan data types explicitly for clarity
+    type StandardPlanData = Omit<PricingCardProps, 'onCTAClick'>;
+    type EnterprisePlanData = Omit<PricingCardProps, 'onCTAClick'>;
+
+    const standardPlans: StandardPlanData[] = [
         {
             title: "Solo Innovator",
             description: "For individual business owners and freelancers with up to 2 users",
@@ -154,13 +173,12 @@ const PricingSection = () => {
         },
     ];
 
-    const enterprisePlan: PricingCardProps = {
+    const enterprisePlan: EnterprisePlanData = {
         title: "Enterprise Transformer",
         description: "For organizations with 200+ employees requiring enterprise-grade solutions support.",
         isEnterprise: true,
         customPricing: true,
         features: [
-            // Note: Figma shows "Everything on Growth Catalyst plan" twice, consolidating here.
             { text: "Everything on Growth Catalyst plan" },
             { text: "Unlimited automation workflows" },
             { text: "Unlimited AI interactions" },
@@ -169,63 +187,85 @@ const PricingSection = () => {
             { text: "Dedicated solution architect" },
             { text: "Monthly executive briefings" },
         ],
-        buttonText: "Contact sales",
+        buttonText: "Contact Sales",
     };
 
     // Combine all plans for schema generation
-    const allPlans = [...standardPlans, enterprisePlan];
+    const allPlansData = [...standardPlans, enterprisePlan];
+
+    // Define an interface for the Schema.org Offer structure we're using
+    interface SchemaOffer {
+        "@type": "Offer";
+        name: string;
+        description: string;
+        priceSpecification?: {
+            "@type": "PriceSpecification";
+            price: number;
+            priceCurrency: string;
+        };
+        eligibleQuantity?: {
+            "@type": "QuantitativeValue";
+            minValue: number;
+            unitText: string;
+        };
+        itemOffered: {
+            "@type": "Service";
+            name: string;
+            description: string;
+        };
+    }
 
     // Define the Offer JSON-LD structured data
     const offersSchema = {
         "@context": "https://schema.org",
-        "@graph": allPlans.map(plan => {
-            // Parse price string to number, removing '$' and ','
+        "@graph": allPlansData.map((plan): SchemaOffer => { // Add return type annotation
             const priceValue = plan.price ? parseFloat(plan.price.replace(/[$,]/g, '')) : undefined;
-            return {
+            // Initialize offer with the defined interface type
+            const offer: SchemaOffer = {
                 "@type": "Offer",
-                "name": plan.title,
-                "description": plan.description,
-                // Add priceSpecification only if priceValue is a valid number
-                ...(priceValue && !isNaN(priceValue) && {
-                    "priceSpecification": {
-                        "@type": "PriceSpecification",
-                        "price": priceValue,
-                        "priceCurrency": "USD" // Assuming USD, adjust if needed
-                    }
-                }),
-                // Indicate custom pricing for enterprise
-                ...(plan.isEnterprise && {
-                    "eligibleQuantity": { // Example: Indicate it's for larger orgs
-                        "@type": "QuantitativeValue",
-                        "minValue": 200, // Based on description
-                        "unitText": "employees"
-                    },
-                    // Could add more details about custom pricing if available
-                }),
-                "itemOffered": {
-                    "@type": "Service", // Or Product, depending on what's offered
-                    "name": plan.title, // Use plan title as a simple reference
-                    "description": plan.description,
-                    // Ideally, link to specific services from SolutionsSection using @id if possible
+                name: plan.title,
+                description: plan.description,
+                itemOffered: {
+                    "@type": "Service",
+                    name: plan.title,
+                    description: plan.description,
                 }
             };
+
+            // Add priceSpecification only if priceValue is a valid number
+            if (priceValue && !isNaN(priceValue)) {
+                offer.priceSpecification = {
+                    "@type": "PriceSpecification",
+                    price: priceValue,
+                    priceCurrency: "USD"
+                };
+            }
+
+            // Indicate custom pricing for enterprise
+            if (plan.isEnterprise) {
+                offer.eligibleQuantity = {
+                    "@type": "QuantitativeValue",
+                    minValue: 200,
+                    unitText: "employees"
+                };
+            }
+
+            return offer;
         })
     };
 
 
     return (
-        // Section has no padding Y, container has padding Y and borders
-        <section id="pricing" className="pricing-section relative text-white bg-[#0A0A0A] border-t border-[#18181B]" style={{ backgroundImage: "url('/images/PriceSectionBG.png')", backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' }}> {/* Added border-t */}
-             {/* Add the Offer Schema */}
+        <section id="pricing" className="pricing-section relative text-white bg-[#0A0A0A] border-t border-[#18181B]" style={{ backgroundImage: "url('/images/PriceSectionBG.png')", backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' }}>
              <Script
                 id="pricing-offers-schema"
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{ __html: JSON.stringify(offersSchema) }}
              />
-             <div className="absolute inset-0 bg-gradient-to-b from-[#0A0A0A] via-transparent to-[#0A0A0A]"></div> {/* Gradient fades to/from background color */}
-             <div className="relative container mx-auto px-6 py-16 md:py-24 border-l border-r border-[#18181B]"> {/* Set padding to px-6 py-16 md:py-24 */}
+             <div className="absolute inset-0 bg-gradient-to-b from-[#0A0A0A] via-transparent to-[#0A0A0A]"></div>
+             <div className="relative container mx-auto px-6 py-16 md:py-24 border-l border-r border-[#18181B]">
                 <div className="text-center mb-12 md:mb-16">
-                    <span className="inline-flex items-center gap-1 bg-gray-800 text-[#FEC213] text-sm font-medium px-3 py-1 rounded-full mb-4"> {/* Standardized style */}
+                    <span className="inline-flex items-center gap-1 bg-gray-800 text-[#FEC213] text-sm font-medium px-3 py-1 rounded-full mb-4">
                         Pricing
                     </span>
                     <h2 className="text-3xl md:text-5xl font-semibold mb-4">
@@ -239,15 +279,22 @@ const PricingSection = () => {
                 {/* Standard Plans Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 mb-8 md:mb-12">
                     {standardPlans.map((plan, index) => (
-                        <PricingCard key={`standard-${index}`} {...plan} />
+                        <PricingCard key={`standard-${index}`} {...plan} onCTAClick={openModal} />
                     ))}
                 </div>
 
                 {/* Enterprise Plan Section */}
-                <div className="max-w-5xl mx-auto"> {/* Center and constrain width */}
-                     <PricingCard {...enterprisePlan} />
+                <div className="max-w-5xl mx-auto">
+                     <PricingCard {...enterprisePlan} onCTAClick={openModal} />
                 </div>
             </div>
+
+            {/* Render the Modal */}
+            <PricingLeadCaptureModal
+                isOpen={isModalOpen}
+                onClose={closeModal}
+                planName={selectedPlan}
+            />
         </section>
     );
 };

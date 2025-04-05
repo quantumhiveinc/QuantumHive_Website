@@ -3,10 +3,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-
+import { LeadCaptureModal } from "./LeadCaptureModal"; // Corrected: Use named import
 const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
+  // Removed modal state, as LeadCaptureModal handles it internally
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
@@ -25,6 +25,7 @@ const Header = () => {
   const repeatedBannerItems = Array(6).fill(bannerItems).flat(); // Repeat for visual effect
 
   return (
+    // Removed React Fragment, no longer needed
     <header className="sticky top-0 z-50 bg-[#0A0A0A] border-b border-gray-800">
       <nav className="container mx-auto px-6 py-4 flex justify-between items-center border-l border-r border-[#18181B]">
         <Link href="/" className="flex items-center">
@@ -49,13 +50,17 @@ const Header = () => {
         </div>
         <div className="flex items-center">
            {/* CTA Button - Hidden on mobile, shown on md and up */}
-           <Link
-            href="#"
-            className="hidden md:flex bg-[#FDB813] text-[#0A0A0A] px-5 py-2.5 rounded-full text-sm font-semibold hover:bg-opacity-90 transition-colors items-center"
-          >
-            Free Consultation
-            <span className="ml-1">&#8594;</span> {/* Right arrow */}
-          </Link>
+           {/* CTA Button - Changed to button to open modal */}
+           {/* Wrap the button with LeadCaptureModal */}
+           <LeadCaptureModal>
+             <button
+              // Removed onClick handler
+              className="hidden md:flex bg-[#FDB813] text-[#0A0A0A] px-5 py-2.5 rounded-full text-sm font-semibold hover:bg-opacity-90 transition-colors items-center"
+            >
+              Free Consultation
+              <span className="ml-1">&#8594;</span> {/* Right arrow */}
+            </button>
+           </LeadCaptureModal>
           {/* Placeholder for mobile menu button */}
           <button
             className="md:hidden ml-4 text-gray-300 hover:text-white focus:outline-none"

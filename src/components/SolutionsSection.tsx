@@ -1,7 +1,16 @@
-import Link from "next/link";
+"use client";
+
 import Image from "next/image";
 import Script from 'next/script'; // Import Script component
 
+// Extend the Window interface to include Calendly
+declare global {
+  interface Window {
+    Calendly?: {
+      initPopupWidget: (options: { url: string }) => void;
+    };
+  }
+}
 // Define data for structured data generation
 const solutionsData = [
   {
@@ -73,6 +82,11 @@ const SolutionsSection = () => {
 
   return (
     <section id="solutions" className="solutions-section bg-[#0A0A0A] border-t border-b border-[#18181B] bg-fade-overlay bg-fixed">
+       {/* Calendly link widget begin */}
+       <link href="https://assets.calendly.com/assets/external/widget.css" rel="stylesheet" />
+       <Script src="https://assets.calendly.com/assets/external/widget.js" strategy="lazyOnload" />
+       {/* Calendly link widget end */}
+
        {/* Add the Service Schema */}
        <Script
         id="solutions-schema"
@@ -123,13 +137,16 @@ const SolutionsSection = () => {
         </div>
 
         {/* CTA Button */}
-        <Link
-          href="#"
+        {/* Calendly link widget begin */}
+        <a
+          href=""
+          onClick={(e) => { e.preventDefault(); window.Calendly?.initPopupWidget({url: 'https://calendly.com/ceo-quantumhive'}); }}
           className="inline-flex items-center justify-center bg-[#FDB813] text-[#0A0A0A] px-8 py-3 rounded-full text-base font-semibold hover:bg-opacity-90 transition-colors"
         >
           Schedule a Solution Discovery Call
           <span className="ml-2">&#8594;</span> {/* Right arrow */}
-        </Link>
+        </a>
+        {/* Calendly link widget end */}
       </div>
     </section>
   );

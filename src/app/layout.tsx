@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import { headers } from 'next/headers'; // Import headers
+// Removed: import { headers } from 'next/headers';
 import "./globals.css";
-import Header from '@/components/Header'; // Import Header
-import Footer from '@/components/Footer'; // Import Footer
+// Removed: import Header from '@/components/Header';
+// Removed: import Footer from '@/components/Footer';
 import Script from 'next/script'; // Import Script component
 import AuthProvider from '@/components/AuthProvider'; // Import AuthProvider
+import LayoutWrapper from '@/components/LayoutWrapper'; // Import LayoutWrapper
 import { Toaster } from "sonner"; // Import Toaster directly
 const ttHovesPro = localFont({
   src: [
@@ -33,26 +34,22 @@ export const metadata: Metadata = {
   description: "Quantum Hive delivers productized AI solutions for mid-market companies. Get accessible, ROI-driven AI development without enterprise complexity. Explore AI agents.",
 };
 
-export default async function RootLayout({ // Keep async
+export default function RootLayout({ // Can remove async now
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const headerList = await headers(); // Add await
-  // Read the custom header set by the middleware
-  const pathname = headerList.get('x-pathname') || '';
-  // Check if the path starts with /admin (this includes /admin/login)
-  const isAdminRoute = pathname.startsWith('/admin');
+  // Removed server-side path checking logic
   return (
     <html lang="en" suppressHydrationWarning={true}>
       <body
         className={`${ttHovesPro.variable} font-sans antialiased flex flex-col min-h-screen bg-[#0A0A0A] text-[#EDEDED]`}
       >
-        <AuthProvider> {/* Wrap content with AuthProvider */}
-          {!isAdminRoute && <Header />} {/* Conditionally render Header */}
-          <main className="flex-grow">{children}</main> {/* Wrap children in main for semantic structure and flex-grow */}
-          {!isAdminRoute && <Footer />} {/* Conditionally render Footer */}
-          <Toaster richColors position="top-right" /> {/* Add Toaster here */}
+        <AuthProvider> {/* AuthProvider remains */}
+          <LayoutWrapper> {/* Use LayoutWrapper for conditional Header/Footer */}
+            <main className="flex-grow">{children}</main> {/* Main content */}
+            <Toaster richColors position="top-right" /> {/* Keep Toaster inside wrapper if needed by Header/Footer, or move outside if independent */}
+          </LayoutWrapper>
         </AuthProvider>
         <Script
           id="schema-markup"

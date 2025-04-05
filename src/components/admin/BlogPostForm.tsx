@@ -1,14 +1,18 @@
 // src/components/admin/BlogPostForm.tsx
 "use client";
 
-import React, { useState } from 'react';
-// import { useRouter } from 'next/navigation'; // Not used in this component directly
+import React, { useState } from 'react'; // Removed unused useMemo
+import Image from 'next/image';
+// import dynamic from 'next/dynamic'; // Import dynamic (No longer needed for static import test)
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea"; // Assuming Textarea component exists
-import { Checkbox } from "@/components/ui/checkbox"; // Assuming Checkbox component exists
+// import { Textarea } from "@/components/ui/textarea"; // No longer needed for description
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
+import UnsplashImageSearch from './UnsplashImageSearch';
+import TiptapEditor from './TiptapEditor'; // Use static import for testing
+import './TiptapEditor.css'; // Keep CSS import
 
 // Define the structure for form data, including optional id for editing
 interface BlogPostFormData {
@@ -17,6 +21,10 @@ interface BlogPostFormData {
   description: string;
   content: string;
   published: boolean;
+  featuredImageUrl?: string | null;
+  featuredImageUnsplashUrl?: string | null; // Link to the image page on Unsplash
+  featuredImagePhotographerName?: string | null; // Photographer's name
+  featuredImagePhotographerUrl?: string | null; // Link to photographer's profile
 }
 
 interface BlogPostFormProps {
@@ -25,28 +33,59 @@ interface BlogPostFormProps {
   onCancel: () => void; // Callback function for cancellation
 }
 
+// Dynamically import TiptapEditor with SSR disabled
+// const TiptapEditor = dynamic(() => import('./TiptapEditor'), { ssr: false }); // Temporarily disable dynamic import
+
 export default function BlogPostForm({ initialData, onSave, onCancel }: BlogPostFormProps) {
-  // const router = useRouter(); // Not needed here
   const [formData, setFormData] = useState<BlogPostFormData>({
     title: initialData?.title || '',
     description: initialData?.description || '',
     content: initialData?.content || '',
     published: initialData?.published || false,
+    featuredImageUrl: initialData?.featuredImageUrl || null,
+    featuredImageUnsplashUrl: initialData?.featuredImageUnsplashUrl || null,
+    featuredImagePhotographerName: initialData?.featuredImagePhotographerName || null,
+    featuredImagePhotographerUrl: initialData?.featuredImagePhotographerUrl || null,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const isEditing = !!initialData?.id;
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Only handle title here now
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    if (name === 'title') {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
+  };
+
+  // Specific handler for Tiptap content changes (main content)
+  const handleContentChange = (htmlContent: string) => {
+    setFormData(prev => ({ ...prev, content: htmlContent }));
+  };
+
+  // Specific handler for Tiptap description changes
+  const handleDescriptionChange = (htmlContent: string) => {
+    setFormData(prev => ({ ...prev, description: htmlContent }));
   };
 
   const handleCheckboxChange = (checked: boolean | 'indeterminate') => {
      if (typeof checked === 'boolean') {
         setFormData(prev => ({ ...prev, published: checked }));
      }
+  };
+
+  const handleImageSelect = (imageUrl: string, unsplashUrl: string, photographerName: string, photographerUrl: string) => {
+    setFormData(prev => ({
+      ...prev,
+      featuredImageUrl: imageUrl,
+      featuredImageUnsplashUrl: unsplashUrl,
+      featuredImagePhotographerName: photographerName,
+      featuredImagePhotographerUrl: photographerUrl,
+    }));
+    // Optionally add a toast notification
+    toast.info("Featured image selected.");
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -104,33 +143,76 @@ export default function BlogPostForm({ initialData, onSave, onCancel }: BlogPost
           maxLength={250} // Add reasonable length limit
         />
       </div>
-       <div className="space-y-2">
+      <div className="space-y-2">
         <Label htmlFor="description">Description (Optional)</Label>
-        <Textarea
-          id="description"
-          name="description"
-          value={formData.description}
-          onChange={handleChange}
+        {/* Replace Textarea with TiptapEditor for description */}
+        <TiptapEditor
+          initialContent={formData.description}
+          onChange={handleDescriptionChange} // Use the new handler
           disabled={loading}
-          rows={3}
+          // You might want different controls or a simpler toolbar for the description
+          // For now, it uses the same TiptapEditor component as content
         />
         <p className="text-sm text-muted-foreground">
-          A short summary or excerpt for display on listing pages.
+          A short summary or excerpt for display on listing pages, using the rich text editor.
         </p>
       </div>
+
+     {/* Featured Image Section */}
+     <div className="space-y-2">
+         <Label>Featured Image (via Unsplash)</Label>
+         {/* Display current image preview if available and no search results shown */}
+         {formData.featuredImageUrl && (
+           <div className="mt-2 mb-2 relative aspect-video w-full max-w-sm border rounded overflow-hidden">
+               <Image
+               src={formData.featuredImageUrl}
+               alt="Current featured image"
+               fill
+               style={{ objectFit: 'cover' }}
+               />
+           </div>
+         )}
+         <UnsplashImageSearch
+             onImageSelect={handleImageSelect}
+             currentImageUrl={formData.featuredImageUrl} // Pass current URL for initial display logic
+         />
+         {/* Display attribution only if an image is selected */}
+         {formData.featuredImageUrl && formData.featuredImageUnsplashUrl && (
+             <p className="text-sm text-muted-foreground mt-1">
+                 Photo by{' '}
+                 <a
+                     href={`${formData.featuredImagePhotographerUrl}?utm_source=quantumhive_website&utm_medium=referral`} // Replace your_app_name
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     className="underline hover:text-primary"
+                 >
+                     {formData.featuredImagePhotographerName || 'Unknown Photographer'}
+                 </a>{' '}
+                 on{' '}
+                 <a
+                     href={`${formData.featuredImageUnsplashUrl}?utm_source=quantumhive_website&utm_medium=referral`} // Replace your_app_name
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     className="underline hover:text-primary"
+                 >
+                     Unsplash
+                 </a>
+             </p>
+         )}
+         <p className="text-xs text-muted-foreground">Search for an image and click to select it. The regular size image will be saved.</p>
+     </div>
+
       <div className="space-y-2">
-        <Label htmlFor="content">Content (Markdown supported)</Label>
-        <Textarea
-          id="content"
-          name="content"
-          value={formData.content}
-          onChange={handleChange}
+        <Label htmlFor="content">Content</Label>
+        {/* Replace Textarea with TiptapEditor */}
+        <TiptapEditor
+          initialContent={formData.content}
+          onChange={handleContentChange}
           disabled={loading}
-          rows={10} // Adjust rows as needed
         />
          <p className="text-sm text-muted-foreground">
-          Main body of the blog post. Basic Markdown is processed.
-        </p>
+           Use the editor above to format the main body of the blog post.
+         </p>
       </div>
        <div className="flex items-center space-x-2">
         <Checkbox

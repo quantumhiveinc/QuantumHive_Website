@@ -23,7 +23,7 @@ export default async function AdminLayout({
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Add the Header */}
           <AdminHeader />
-          <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-200 dark:bg-gray-800 p-6">
+          <main className="admin-main-content flex-1 overflow-x-hidden overflow-y-auto bg-gray-200 dark:bg-gray-800 p-6">
             {/* The actual page content */}
             {children}
           </main>

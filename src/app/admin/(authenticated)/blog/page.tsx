@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
-import BlogPostForm from '@/components/admin/BlogPostForm'; // Import the form
+import Link from 'next/link'; // Import Link
 import {
   Table,
   TableBody,
@@ -24,27 +24,21 @@ import {
   // AlertDialogTrigger, // Not needed if using controlled dialog
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  // DialogTrigger, // Not used directly here
-  // DialogFooter, // Not used directly here
-  // DialogClose, // Not used directly here
-} from "@/components/ui/dialog";
+// Removed Dialog imports
 
 // Define the structure of a BlogPost based on our Prisma schema (or API response)
+// Updated BlogPost interface to include fetched relations
 interface BlogPost {
   id: number;
   title: string;
   slug: string;
-  description?: string | null; // Add optional description
-  content?: string | null;     // Add optional content
   published: boolean;
-  createdAt: string; // Dates will likely be strings from JSON
+  createdAt: string;
   updatedAt: string;
+  author: { id: number; name: string } | null;
+  categories: { id: number; name: string }[];
+  tags: { id: number; name: string }[];
+  // Add other fields if needed by the table display
 }
 
 export default function AdminBlogPage() {
@@ -54,9 +48,7 @@ export default function AdminBlogPage() {
   const [error, setError] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [postToDelete, setPostToDelete] = useState<BlogPost | null>(null);
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingPost, setEditingPost] = useState<BlogPost | null>(null); // Store post being edited
-
+  // Removed state related to the form dialog
   const fetchPosts = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -111,82 +103,72 @@ export default function AdminBlogPage() {
     }
   };
 
-  // Placeholder for navigation
-  const handleAddNew = () => {
-    setEditingPost(null); // Ensure we are not editing
-    setIsFormOpen(true); // Open the dialog
-  };
-
-  const handleEdit = (post: BlogPost) => {
-    setEditingPost(post); // Set the post to edit
-    setIsFormOpen(true); // Open the dialog
-  };
-  // Callback for when the form is saved successfully
-  const handleSave = () => {
-    setIsFormOpen(false); // Close the dialog
-    setEditingPost(null); // Reset editing state
-    fetchPosts(); // Refresh the list of posts
-  };
-
-  // Callback for when the form is cancelled
-  const handleCancel = () => {
-    setIsFormOpen(false);
-    setEditingPost(null);
-  };
+  // Removed handler functions related to the form dialog
 
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-semibold">Manage Blog Posts</h2>
-        {/* Using DialogTrigger might be simpler if form is always in dialog */}
-        <Button onClick={handleAddNew}>Add New Post</Button>
-      </div>
+    // Apply styling similar to the other admin management pages
+    <div className="flex flex-col h-full text-black">
+      <div className="flex-grow p-4 overflow-y-auto">
+        {/* Wrap content in a card */}
+        <div className="bg-card p-6 rounded-lg border shadow-sm space-y-6">
+          {/* Header row */}
+          <div className="flex justify-between items-center">
+            <h2 className="text-2xl font-semibold">Manage Blog Posts</h2>
+            <Button asChild>
+                <Link href="/admin/blog/new">Add New Post</Link>
+            </Button>
+          </div>
 
-      {loading && <p>Loading posts...</p>}
-      {error && <p className="text-red-600">Error loading posts: {error}</p>}
+          {/* Loading and Error States */}
+          {loading && <p className="text-muted-foreground">Loading posts...</p>}
+          {error && <p className="text-destructive">Error loading posts: {error}</p>}
 
-      {!loading && !error && (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Title</TableHead>
-              <TableHead>Slug</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Created At</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {posts.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center">No blog posts found.</TableCell>
-              </TableRow>
-            ) : (
-              posts.map((post) => (
-                <TableRow key={post.id}>
-                  <TableCell className="font-medium">{post.title}</TableCell>
-                  <TableCell>{post.slug}</TableCell>
-                  <TableCell>{post.published ? 'Published' : 'Draft'}</TableCell>
-                  <TableCell>{new Date(post.createdAt).toLocaleDateString()}</TableCell>
-                  <TableCell className="text-right space-x-2">
-                    <Button variant="outline" size="sm" onClick={() => handleEdit(post)}>
-                      Edit
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleDeleteClick(post)}
-                    >
-                      Delete
-                    </Button>
-                  </TableCell>
+          {/* Table */}
+          {!loading && !error && (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Slug</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Author</TableHead> {/* Added Author column */}
+                  <TableHead>Created At</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      )}
+              </TableHeader>
+              <TableBody>
+                {posts.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center">No blog posts found.</TableCell> {/* Updated colSpan */}
+                  </TableRow>
+                ) : (
+                  posts.map((post) => (
+                    <TableRow key={post.id}>
+                      <TableCell className="font-medium">{post.title}</TableCell>
+                      <TableCell>{post.slug}</TableCell>
+                      <TableCell>{post.published ? 'Published' : 'Draft'}</TableCell>
+                      <TableCell>{post.author?.name || 'N/A'}</TableCell> {/* Display author name */}
+                      <TableCell>{new Date(post.createdAt).toLocaleDateString()}</TableCell>
+                      <TableCell className="text-right space-x-2">
+                         <Button variant="outline" size="sm" asChild>
+                            <Link href={`/admin/blog/edit/${post.id}`}>Edit</Link>
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDeleteClick(post)}
+                        >
+                          Delete
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          )}
+        {/* Delete Dialog remains outside the main card structure */}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
@@ -206,34 +188,28 @@ export default function AdminBlogPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-     {/* Add/Edit Form Dialog - Moved inside the main div */}
-     <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-       <DialogContent className="sm:max-w-[600px]"> {/* Adjust width as needed */}
-         <DialogHeader>
-           <DialogTitle>{editingPost ? 'Edit Blog Post' : 'Add New Blog Post'}</DialogTitle>
-           <DialogDescription>
-             {editingPost ? 'Update the details of the blog post.' : 'Fill in the details for the new blog post.'}
-           </DialogDescription>
-         </DialogHeader>
-         {/* Conditionally render form only when dialog is open to ensure initialData is correctly passed */}
-         {isFormOpen && (
-           <BlogPostForm
-             key={editingPost ? editingPost.id : 'new'} // Add key to force re-mount on edit/add switch
-             initialData={editingPost ? {
-                 id: editingPost.id,
-                 title: editingPost.title,
-                 // NOTE: For a real edit form, you'd fetch the full post data here
-                 // based on editingPost.id instead of using placeholders.
-                 description: editingPost.description || '', // Use existing description if available
-                 content: editingPost.content || '',       // Use existing content if available
-                 published: editingPost.published,
-             } : undefined}
-             onSave={handleSave}
-             onCancel={handleCancel}
-           />
-         )}
-       </DialogContent>
-     </Dialog>
-   </div>
- );
+      {/* Removed the Dialog and BlogPostForm */}
+        </div> {/* End card */}
+      </div> {/* End flex-grow */}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the blog post
+              titled &quot;{postToDelete?.title}&quot;.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPostToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
+              Yes, delete post
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div> // End flex container
+  );
 }

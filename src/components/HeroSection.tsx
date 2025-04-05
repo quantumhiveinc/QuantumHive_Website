@@ -1,5 +1,8 @@
+"use client"; // Add this directive
+
 import Image from "next/image";
 import Link from "next/link";
+import { LeadCaptureModal } from "./LeadCaptureModal"; // Import only LeadCaptureModal
 
 const HeroSection = () => {
   return (
@@ -18,13 +21,16 @@ const HeroSection = () => {
           Custom AI development and implementation for growing businesses that delivers measurable ROI without enterprise complexity or cost.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
-          <Link
-            href="#"
-            className="border border-gray-600 rounded-full px-6 py-3 text-sm font-semibold hover:bg-gray-800 transition-colors flex items-center justify-center"
-          >
-            Get Free Consultation
-            <span className="ml-1">&#8594;</span> {/* Right arrow */}
-          </Link>
+          {/* Pass the button directly as children to LeadCaptureModal */}
+          <LeadCaptureModal>
+            <button
+              type="button"
+              className="border border-gray-600 rounded-full px-6 py-3 text-sm font-semibold hover:bg-gray-800 transition-colors flex items-center justify-center"
+            >
+              Get Free Consultation
+              <span className="ml-1">&#8594;</span> {/* Right arrow */}
+            </button>
+          </LeadCaptureModal>
           <Link
             href="#"
             className="bg-[#FDB813] text-[#0A0A0A] rounded-full px-6 py-3 text-sm font-semibold hover:bg-opacity-90 transition-colors flex items-center justify-center"

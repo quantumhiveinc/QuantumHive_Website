@@ -1,0 +1,107 @@
+/* src/components/admin/TiptapEditor.css */
+
+/* Basic wrapper styling */
+.tiptap-wrapper {
+  /* Uses Tailwind classes primarily, but you can add overrides here */
+}
+
+/* Editor content area */
+.tiptap-editor {
+  /* Ensure prose styles apply correctly */
+  max-width: none; /* Override default prose max-width if needed */
+}
+
+/* Apply padding directly to the editable area */
+/* Increase specificity to ensure padding overrides other styles */
+/* Apply padding directly to the editable area with high specificity */
+.tiptap-wrapper .tiptap-editor .ProseMirror {
+  padding: 1rem; /* Equivalent to Tailwind's p-4. Removed !important */
+  min-height: 200px; /* Ensure min-height is also applied here if needed */
+  box-sizing: border-box; /* Ensure padding doesn't increase overall size unexpectedly */
+}
+
+/* Basic Toolbar Styling */
+.tiptap-toolbar {
+  /* Uses Tailwind classes primarily */
+}
+
+/* Specific Toolbar Button Styling */
+/* Apply styles directly to buttons within the specific toolbar */
+/* Specific Toolbar Button Styling with box-sizing */
+.tiptap-wrapper .tiptap-toolbar button {
+  padding: 0.25rem 0.75rem; /* Adjust padding as needed */
+  border: 1px solid #cbd5e1; /* Example: Tailwind gray-300 */
+  border-radius: 0.375rem; /* Example: Tailwind rounded-md */
+  background-color: #f8fafc; /* Example: Tailwind slate-50 */
+  color: #0f172a; /* Example: Tailwind slate-900 */
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s;
+  font-size: 0.875rem; /* Example: Tailwind text-sm */
+  line-height: 1.25rem;
+  box-sizing: border-box; /* Add box-sizing */
+}
+
+/* Hover state for enabled buttons */
+.tiptap-wrapper .tiptap-toolbar button:not(:disabled):hover {
+  background-color: #f1f5f9; /* Example: Tailwind slate-100 */
+  border-color: #94a3b8; /* Example: Tailwind slate-400 */
+}
+
+/* Disabled state */
+.tiptap-wrapper .tiptap-toolbar button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Active state for buttons */
+.tiptap-wrapper .tiptap-toolbar button.is-active {
+  background-color: #e2e8f0; /* Example: Tailwind slate-200 */
+  border-color: #64748b; /* Example: Tailwind slate-500 */
+  font-weight: 600; /* Example: Tailwind semibold */
+  color: #1e293b; /* Example: Tailwind slate-800 */
+}
+
+/* Ensure Prose styles don't get overly specific and prevent editor interaction */
+.tiptap-editor > *:first-child {
+  margin-top: 0;
+}
+
+.tiptap-editor > *:last-child {
+  margin-bottom: 0;
+}
+
+/* Add specific styles for Tiptap elements if needed */
+.tiptap-editor p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #adb5bd;
+  pointer-events: none;
+  height: 0;
+}
+
+.tiptap-editor pre {
+  background: #0D0D0D;
+  color: #FFF;
+  font-family: 'JetBrainsMono', monospace;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+}
+
+.tiptap-editor pre code {
+  color: inherit;
+  padding: 0;
+  background: none;
+  font-size: 0.8rem;
+}
+
+.tiptap-editor blockquote {
+  border-left: 3px solid rgba(0,0,0,0.1);
+  padding-left: 1rem;
+  font-style: italic;
+}
+
+.tiptap-editor hr {
+    border: none;
+    border-top: 2px solid rgba(0,0,0,0.1);
+    margin: 2rem 0;
+}
