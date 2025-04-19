@@ -4,11 +4,11 @@ import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt'; // Import getToken
 
 export async function middleware(request: NextRequest) {
-  const nextAuthSecret = process.env.NEXTAUTH_SECRET;
+  const authSecret = process.env.AUTH_SECRET; // Changed to AUTH_SECRET
 
   // Explicitly check if the secret is available at runtime
-  if (!nextAuthSecret) {
-    console.error("FATAL ERROR in middleware: NEXTAUTH_SECRET environment variable is not set or not accessible.");
+  if (!authSecret) { // Changed to authSecret
+    console.error("FATAL ERROR in middleware: AUTH_SECRET environment variable is not set or not accessible."); // Changed message
     // Return a generic server error response as the application cannot proceed securely
     return new NextResponse(
       'Internal Server Error: Authentication configuration is missing.',
@@ -17,12 +17,12 @@ export async function middleware(request: NextRequest) {
   }
 
   // Use getToken to directly get the JWT payload from the request cookies
-  console.log("Attempting getToken. NEXTAUTH_SECRET type:", typeof nextAuthSecret); // Log type
-  console.log("NEXTAUTH_SECRET value (first 5 chars):", nextAuthSecret?.substring(0, 5)); // Log beginning of secret if exists
+  console.log("Attempting getToken. AUTH_SECRET type:", typeof authSecret); // Changed log
+  console.log("AUTH_SECRET value (first 5 chars):", authSecret?.substring(0, 5)); // Changed log
   console.log("Using salt:", '__Secure-authjs.session-token'); // Log the salt being used
   const token = await getToken({
     req: request,
-    secret: nextAuthSecret, // Use the validated secret (now guaranteed to be a string)
+    secret: authSecret, // Changed to authSecret
     // salt is required in v5 beta, typically matches the secure cookie name
     salt: '__Secure-authjs.session-token', // Use 'authjs.session-token' if using http
   });

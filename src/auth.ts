@@ -51,6 +51,6 @@ export const { handlers: { GET, POST }, auth, signIn, signOut } = NextAuth({
     },
   },
   pages: { signIn: '/admin/login' }, // Restore custom login page redirect
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: process.env.AUTH_SECRET, // Changed to AUTH_SECRET
   debug: process.env.NODE_ENV === 'development',
 });
