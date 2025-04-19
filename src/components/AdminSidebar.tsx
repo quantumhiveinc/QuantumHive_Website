@@ -30,6 +30,14 @@ const AdminSidebar = () => {
         { href: '/admin/categories/new', label: 'Add New Category', icon: FolderPlus },
       ]
     },
+    {
+      label: 'Services',
+      icon: Briefcase,
+      children: [
+        { href: '/admin/services', label: 'All Services', icon: List },
+        { href: '/admin/services/new', label: 'New Service', icon: PlusSquare },
+      ]
+    },
     { href: '/admin/case-studies', label: 'Case Studies', icon: Briefcase },
     { href: '/admin/industries', label: 'Industries', icon: Building },
     { href: '/admin/leads', label: 'Leads', icon: ClipboardList }, // Added Leads link

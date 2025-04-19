@@ -2,6 +2,7 @@ import type { Metadata } from "next"; // Import Metadata type
 import HeroSection from "@/components/HeroSection";
 import ClientLogos from "@/components/ClientLogos";
 import SolutionsSection from "@/components/SolutionsSection";
+import Services from "@/components/Services";
 import TechStackSection from "@/components/TechStackSection"; // Added import
 import TestimonialsSection from "@/components/TestimonialsSection"; // Added import
 import BusinessTweetsSection from "@/components/BusinessTweetsSection"; // Added import
@@ -65,6 +66,7 @@ export default function Home() {
         <HeroSection />
         <ClientLogos />
         <SolutionsSection />
+        <Services />
         <TechStackSection /> {/* Added TechStack section */}
         <TestimonialsSection /> {/* Added Testimonials section */}
         <BusinessTweetsSection /> {/* Added Business Tweets section */}

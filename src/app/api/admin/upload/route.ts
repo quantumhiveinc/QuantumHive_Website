@@ -1,71 +1,52 @@
 // src/app/api/admin/upload/route.ts
 import { NextResponse, NextRequest } from 'next/server';
 import { auth } from '@/auth';
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
-import { randomUUID } from 'crypto'; // For generating unique filenames
-
-// Ensure required environment variables are set
-if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY || !process.env.AWS_REGION || !process.env.S3_BUCKET_NAME) {
-    console.error("Error: Missing required AWS S3 environment variables.");
-    // Optionally throw an error during build/startup in a real app
-}
-
-const s3Client = new S3Client({
-    region: process.env.AWS_REGION!,
-    credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-    },
-});
-
-const BUCKET_NAME = process.env.S3_BUCKET_NAME!;
+import { generatePresignedPutUrl } from '@/lib/s3'; // Import the new function
 
 export async function POST(request: NextRequest) {
     const session = await auth();
+    // Ensure user is authenticated and is an ADMIN
     if (!session?.user || session.user.role !== 'ADMIN') {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     try {
-        const formData = await request.formData();
-        const file = formData.get('file') as File | null;
+        // Parse the request body to get fileName and fileType
+        const body = await request.json();
+        const { fileName, fileType } = body;
 
-        if (!file) {
-            return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+        // Validate input
+        if (!fileName || typeof fileName !== 'string' || !fileType || typeof fileType !== 'string') {
+            return NextResponse.json({ error: 'Missing or invalid fileName or fileType in request body' }, { status: 400 });
         }
 
-        // Generate a unique filename to prevent overwrites
-        const fileExtension = file.name.split('.').pop();
-        const uniqueFilename = `${randomUUID()}.${fileExtension}`;
+        console.log(`[Upload API - Presign] Received request for: Name=${fileName}, Type=${fileType}`);
 
-        // Read file content into a buffer
-        const buffer = Buffer.from(await file.arrayBuffer());
+        // Generate the presigned URL using the utility function from s3.ts
+        // This function handles interaction with AWS SDK and environment variables
+        const presignedResult = await generatePresignedPutUrl({ fileName, fileType });
 
-        // Prepare the command for S3 upload
-        const command = new PutObjectCommand({
-            Bucket: BUCKET_NAME,
-            Key: uniqueFilename, // Use the unique filename as the key
-            Body: buffer,
-            ContentType: file.type,
-            ACL: 'public-read', // Make the file publicly accessible (adjust if needed)
-        });
+        console.log(`[Upload API - Presign] Generated URL: ${presignedResult.uploadUrl}, Key: ${presignedResult.key}, Public URL: ${presignedResult.publicUrl}`);
 
-        // Upload the file to S3
-        await s3Client.send(command);
-
-        // Construct the public URL of the uploaded file
-        // Note: URL format might vary slightly based on region and bucket settings
-        const fileUrl = `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uniqueFilename}`;
-
-        return NextResponse.json({ success: true, url: fileUrl }, { status: 201 });
+        // Return the presigned URL, the unique key assigned in S3, and the final public URL
+        return NextResponse.json(presignedResult, { status: 200 });
 
     } catch (error) {
-        console.error("Error uploading file to S3:", error);
-        // Provide a more specific error message if possible
-        let errorMessage = 'Failed to upload file';
+        console.error("Error generating presigned URL:", error);
+
+        let errorMessage = 'Failed to generate presigned URL';
+        const statusCode = 500;
+
         if (error instanceof Error) {
             errorMessage = error.message;
+            // Check if the error is specifically due to missing environment variables from s3.ts
+            if (errorMessage.includes("Missing required AWS S3 environment variables")) {
+                 errorMessage = 'Server configuration error: Missing AWS S3 credentials.';
+                 // Keep statusCode 500 as it's a server-side issue
+            }
         }
-        return NextResponse.json({ error: 'Failed to upload file', details: errorMessage }, { status: 500 });
+
+        // Return a generic error message to the client, log the details server-side
+        return NextResponse.json({ error: 'Failed to process upload request.', details: errorMessage }, { status: statusCode });
     }
 }

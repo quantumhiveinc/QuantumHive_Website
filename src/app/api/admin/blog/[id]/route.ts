@@ -29,7 +29,7 @@ async function generateUniqueSlug(title: string, currentId: number): Promise<str
 
 
 // GET handler to fetch a single blog post by ID (Admin only)
-export async function GET(_request: NextRequest, { params }: RouteParams) {
+export async function GET({ params }: RouteParams) { // Removed unused request parameter
   const session = await auth(); // Use the auth() helper
   if (!session?.user || session.user.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -243,7 +243,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 }
 
 // DELETE handler to delete a blog post by ID (Admin only)
-export async function DELETE(_request: NextRequest, { params }: RouteParams) {
+export async function DELETE({ params }: RouteParams) { // Removed unused request parameter
   const session = await auth(); // Use the auth() helper
   if (!session?.user || session.user.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

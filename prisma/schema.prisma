@@ -162,3 +162,17 @@ model Lead {
   @@index([submissionTimestamp])
   @@map("leads") // Explicit table name
 }
+
+// Model for Services
+model Service {
+  id          Int      @id @default(autoincrement())
+  title       String
+  slug        String   @unique
+  description String?  @db.Text
+  icon        String?  // Optional: For an icon representation (e.g., SVG name or URL)
+  published   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("services")
+}
