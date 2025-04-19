@@ -35,10 +35,12 @@ export async function middleware(request: NextRequest) {
   if (isAdminRoute) {
     // If no session exists, redirect to the NextAuth sign-in flow
     // Check if token exists (user is logged in)
+    console.log(`[Middleware Debug] Checking token for path: ${pathname}`); // <-- ADDED LOG
     if (!token) {
       console.log("Middleware: No session, redirecting to login for", pathname);
       console.log("Middleware: request.url:", request.url); // <-- ADDED LOG
       console.log("Middleware: request.nextUrl.href:", request.nextUrl.href); // <-- ADDED LOG
+      console.log(`[Middleware Debug] Token not found. Redirecting to login.`); // <-- ADDED LOG
       // Redirect to NextAuth's signin page, using NEXTAUTH_URL as the base
       const baseLoginUrl = `${process.env.NEXTAUTH_URL}/api/auth/signin`;
       const callbackDestination = `${process.env.NEXTAUTH_URL}${pathname}`; // Construct callback using NEXTAUTH_URL + original path
@@ -48,6 +50,9 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
+    console.log(`[Middleware Debug] Token found. Checking role.`); // <-- ADDED LOG
+    console.log(`[Middleware Debug] Token details:`, JSON.stringify(token, null, 2)); // <-- ADDED LOG (Log entire token)
+
     // If session exists, check for ADMIN role
     // Note: Ensure the 'role' property is correctly added in your auth.ts callbacks
     // Check for ADMIN role within the token (ensure 'role' is added in auth.ts jwt callback)
@@ -55,6 +60,7 @@ export async function middleware(request: NextRequest) {
        console.log(`Middleware: User not ADMIN (role: ${token.role}), redirecting to login for`, pathname);
        console.log("Middleware: request.url:", request.url); // <-- ADDED LOG
        console.log("Middleware: request.nextUrl.href:", request.nextUrl.href); // <-- ADDED LOG
+       console.log(`[Middleware Debug] Role is not ADMIN (${token.role}). Redirecting to login.`); // <-- ADDED LOG
        // Redirect to NextAuth's signin page, using NEXTAUTH_URL as the base
        const baseLoginUrl = `${process.env.NEXTAUTH_URL}/api/auth/signin`;
        const callbackDestination = `${process.env.NEXTAUTH_URL}${pathname}`; // Construct callback using NEXTAUTH_URL + original path
@@ -67,6 +73,7 @@ export async function middleware(request: NextRequest) {
 
     // If session exists and user is ADMIN, allow access
     console.log("Middleware: Valid admin session found for", pathname);
+    console.log(`[Middleware Debug] Role is ADMIN. Allowing request.`); // <-- ADDED LOG
   }
 
   // Allow the request to proceed for non-admin routes or authenticated admin users
