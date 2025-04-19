@@ -37,6 +37,8 @@ export async function middleware(request: NextRequest) {
     // Check if token exists (user is logged in)
     if (!token) {
       console.log("Middleware: No session, redirecting to login for", pathname);
+      console.log("Middleware: request.url:", request.url); // <-- ADDED LOG
+      console.log("Middleware: request.nextUrl.href:", request.nextUrl.href); // <-- ADDED LOG
       // Redirect to NextAuth's signin page, which should then redirect to our custom /admin/login (defined in auth.ts pages)
       const loginUrl = new URL('/api/auth/signin', request.url);
       loginUrl.searchParams.set('callbackUrl', request.nextUrl.href); // Pass the intended destination
@@ -48,6 +50,8 @@ export async function middleware(request: NextRequest) {
     // Check for ADMIN role within the token (ensure 'role' is added in auth.ts jwt callback)
     if (token.role !== 'ADMIN') {
        console.log(`Middleware: User not ADMIN (role: ${token.role}), redirecting to login for`, pathname);
+       console.log("Middleware: request.url:", request.url); // <-- ADDED LOG
+       console.log("Middleware: request.nextUrl.href:", request.nextUrl.href); // <-- ADDED LOG
        const loginUrl = new URL('/api/auth/signin', request.url);
        loginUrl.searchParams.set('callbackUrl', request.nextUrl.href);
        // Redirecting back to login. Consider an 'unauthorized' page for better UX.
