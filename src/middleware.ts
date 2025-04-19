@@ -8,7 +8,8 @@ export async function middleware(request: NextRequest) {
   const token = await getToken({
     req: request,
     secret: process.env.NEXTAUTH_SECRET!,
-    // salt is deprecated and usually not needed; getToken infers the cookie name
+    // salt is required in v5 beta, typically matches the secure cookie name
+    salt: '__Secure-authjs.session-token', // Use 'authjs.session-token' if using http
   });
   // console.log("Middleware Token:", token); // Optional: Log token for debugging
   const { pathname } = request.nextUrl;

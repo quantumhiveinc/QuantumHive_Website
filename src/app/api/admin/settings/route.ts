@@ -39,7 +39,7 @@ export async function POST(request: Request) {
             // Use the imported encrypt function
             const finalValue = SENSITIVE_KEYS.includes(key) ? encrypt(value) : value;
 
-            return prisma.Setting.upsert({ // Use correct casing: Setting
+            return prisma.setting.upsert({ // Use correct lowercase casing: setting
                 where: { key: key },
                 update: { value: finalValue, category: category },
                 create: { key: key, value: finalValue, category: category },
@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
         const whereClause = category ? { category: category } : {};
 
         // 2. Fetch settings from DB
-        const settingsFromDb = await prisma.Setting.findMany({ // Use correct casing: Setting
+        const settingsFromDb = await prisma.setting.findMany({ // Use correct lowercase casing: setting
              where: whereClause,
         });
 

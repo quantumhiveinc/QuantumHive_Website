@@ -2,24 +2,29 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { auth } from '@/auth';
 import prisma from '@/lib/prisma';
-import { Prisma } from '@prisma/client'; // Import Prisma namespace
+import { Prisma } from '@prisma/client'; // Import only Prisma namespace
 import { slugify } from '@/lib/slugify';
 
-interface RouteContext {
-    params: {
-        id: string;
-    };
-}
+// Removed unused RouteContext interface
+// interface RouteContext {
+//     params: {
+//         id: string;
+//     };
+// }
 
 // GET /api/admin/categories/[id] - Fetches a single category by ID
-export async function GET(request: NextRequest, { params }: RouteContext) {
+export async function GET(
+    request: NextRequest,
+    { params: paramsPromise }: { params: Promise<{ id: string }> } // Type params as Promise
+) {
     const session = await auth();
     // Allow any authenticated user to fetch category details. Adjust if needed.
     if (!session?.user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const categoryId = parseInt(params.id, 10);
+    const params = await paramsPromise; // Await the params promise
+    const categoryId = parseInt(params.id, 10); // Access id from resolved params
     if (isNaN(categoryId)) {
         return NextResponse.json({ error: 'Invalid category ID format.' }, { status: 400 });
     }
@@ -35,20 +40,25 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
 
         return NextResponse.json(category);
     } catch (error) {
-        console.error(`Error fetching category ${categoryId}:`, error);
+        // Cannot access categoryId directly here if promise awaited inside try
+        console.error(`Error fetching category:`, error); // Log generic error
         return NextResponse.json({ error: 'Failed to fetch category due to a server error.' }, { status: 500 });
     }
 }
 
 // PUT /api/admin/categories/[id] - Updates an existing category
-export async function PUT(request: NextRequest, { params }: RouteContext) {
+export async function PUT(
+    request: NextRequest,
+    { params: paramsPromise }: { params: Promise<{ id: string }> } // Type params as Promise
+) {
     const session = await auth();
     // Only ADMINs can update categories
     if (!session?.user || session.user.role !== 'ADMIN') {
         return NextResponse.json({ error: 'Unauthorized: Admin role required.' }, { status: 403 });
     }
 
-    const categoryId = parseInt(params.id, 10);
+    const params = await paramsPromise; // Await the params promise
+    const categoryId = parseInt(params.id, 10); // Access id from resolved params
     if (isNaN(categoryId)) {
         return NextResponse.json({ error: 'Invalid category ID format.' }, { status: 400 });
     }
@@ -69,7 +79,8 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
         }
 
         // Prepare update data - only update if name is provided and different
-        const dataToUpdate: Prisma.CategoryUpdateInput = {};
+        // Define type for dataToUpdate inline
+        const dataToUpdate: { name?: string; slug?: string } = {};
         let slug = existingCategory.slug; // Keep existing slug by default
 
         if (name !== undefined && name.trim() !== existingCategory.name) {
@@ -95,7 +106,8 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
         return NextResponse.json(updatedCategory); // 200 OK with updated data
 
     } catch (error: unknown) {
-        console.error(`Error updating category ${categoryId}:`, error);
+        // Cannot access categoryId directly here if promise awaited inside try
+        console.error(`Error updating category:`, error); // Log generic error
         // Handle unique constraint violations (for name or slug)
         if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002' && 'meta' in error && typeof error.meta === 'object' && error.meta !== null && 'target' in error.meta && Array.isArray(error.meta.target) && (error.meta.target.includes('slug') || error.meta.target.includes('name'))) {
              return NextResponse.json({ error: 'A category with this name or a similar generated identifier already exists.' }, { status: 409 }); // 409 Conflict
@@ -106,21 +118,26 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
 }
 
 // DELETE /api/admin/categories/[id] - Deletes a category
-export async function DELETE(request: NextRequest, { params }: RouteContext) {
+export async function DELETE(
+    request: NextRequest,
+    { params: paramsPromise }: { params: Promise<{ id: string }> } // Type params as Promise
+) {
     const session = await auth();
     // Only ADMINs can delete categories
     if (!session?.user || session.user.role !== 'ADMIN') {
         return NextResponse.json({ error: 'Unauthorized: Admin role required.' }, { status: 403 });
     }
 
-    const categoryId = parseInt(params.id, 10);
+    const params = await paramsPromise; // Await the params promise
+    const categoryId = parseInt(params.id, 10); // Access id from resolved params
     if (isNaN(categoryId)) {
         return NextResponse.json({ error: 'Invalid category ID format.' }, { status: 400 });
     }
 
     try {
         // Use transaction to ensure category exists before delete and handle potential errors gracefully
-        const deletedCategory = await prisma.$transaction(async (tx) => {
+        // Use the correct type for the transaction client 'tx'
+        const deletedCategory = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
              const category = await tx.category.findUnique({
                  where: { id: categoryId },
                  select: { name: true } // Only select necessary field for logging
@@ -141,7 +158,8 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
         return new NextResponse(null, { status: 204 });
 
     } catch (error: unknown) {
-        console.error(`Error deleting category ${categoryId}:`, error);
+        // Cannot access categoryId directly here if promise awaited inside try
+        console.error(`Error deleting category:`, error); // Log generic error
         // Catch the specific error thrown from the transaction
         if (error instanceof Error && error.message === 'CategoryNotFound') {
             return NextResponse.json({ error: 'Category not found.' }, { status: 404 });

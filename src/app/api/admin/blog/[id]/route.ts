@@ -3,13 +3,14 @@ import { NextResponse, NextRequest } from 'next/server';
 import { auth } from '@/auth'; // Import from the central auth config file
 import prisma from '@/lib/prisma';
 import { slugify } from '@/lib/slugify';
-import { Prisma } from '@prisma/client'; // Import Prisma types
+import { Prisma } from '@prisma/client'; // Revert to only Prisma namespace import
 
-interface RouteParams {
-  params: {
-    id: string;
-  };
-}
+// Removed unused RouteParams interface
+// interface RouteParams {
+//   params: {
+//     id: string;
+//   };
+// }
 
 // Function to generate a unique slug, checking against other posts
 async function generateUniqueSlug(title: string, currentId: number): Promise<string> {
@@ -29,14 +30,18 @@ async function generateUniqueSlug(title: string, currentId: number): Promise<str
 
 
 // GET handler to fetch a single blog post by ID (Admin only)
-export async function GET({ params }: RouteParams) { // Removed unused request parameter
+export async function GET(
+    request: NextRequest,
+    { params: paramsPromise }: { params: Promise<{ id: string }> } // Type params as Promise
+) {
   const session = await auth(); // Use the auth() helper
   if (!session?.user || session.user.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
-    const id = parseInt(params.id, 10);
+    const params = await paramsPromise; // Await the params promise
+    const id = parseInt(params.id, 10); // Access id from resolved params
     if (isNaN(id)) {
       return NextResponse.json({ error: 'Invalid ID format' }, { status: 400 });
     }
@@ -45,7 +50,7 @@ export async function GET({ params }: RouteParams) { // Removed unused request p
     const post = await prisma.blogPost.findUnique({
       where: { id },
       include: {
-        author: { select: { id: true, name: true } }, // Select specific fields
+        // author: { select: { id: true, name: true } }, // Removed author include
         categories: { select: { id: true, name: true } },
         tags: { select: { id: true, name: true } },
         galleryImages: { select: { id: true, url: true, altText: true } }, // Include gallery images
@@ -58,20 +63,25 @@ export async function GET({ params }: RouteParams) { // Removed unused request p
 
     return NextResponse.json(post);
   } catch (error) {
-    console.error(`Error fetching blog post ${params.id}:`, error);
+    // Cannot access params directly here if promise awaited inside try
+    console.error(`Error fetching blog post:`, error); // Log generic error
     return NextResponse.json({ error: 'Failed to fetch blog post' }, { status: 500 });
   }
 }
 
 // PUT handler to update a blog post by ID (Admin only)
-export async function PUT(request: NextRequest, { params }: RouteParams) {
+export async function PUT(
+    request: NextRequest,
+    { params: paramsPromise }: { params: Promise<{ id: string }> } // Type params as Promise
+) {
   const session = await auth(); // Use the auth() helper
   if (!session?.user || session.user.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
-    const id = parseInt(params.id, 10);
+    const params = await paramsPromise; // Await the params promise
+    const id = parseInt(params.id, 10); // Access id from resolved params
     if (isNaN(id)) {
       return NextResponse.json({ error: 'Invalid ID format' }, { status: 400 });
     }
@@ -88,7 +98,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         metaTitle,
         metaDescription,
         youtubeUrl,
-        authorId, // Can be number or null/undefined
+        // authorId, // Removed authorId
         categoryIds, // Array of numbers
         tagNames, // Array of strings
         galleryImages, // Array of objects: [{ url: "...", altText: "..." }]
@@ -144,7 +154,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         : [];
 
     // --- Prepare Base Update Data (excluding gallery images) ---
-    const updateData: Prisma.BlogPostUpdateInput = {
+    // Remove explicit type annotation as a workaround for TS error
+    const updateData = {
         title: title ?? existingPost.title,
         slug: finalSlug,
         description: description ?? existingPost.description,
@@ -155,10 +166,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         metaTitle: metaTitle !== undefined ? metaTitle : existingPost.metaTitle,
         metaDescription: metaDescription !== undefined ? metaDescription : existingPost.metaDescription,
         youtubeUrl: youtubeUrl !== undefined ? youtubeUrl : existingPost.youtubeUrl,
-        // Author: Connect if ID provided, disconnect if explicitly null, otherwise leave as is
-        author: authorId === null
-            ? { disconnect: true }
-            : (authorId !== undefined ? { connect: { id: Number(authorId) } } : undefined),
+        // Removed author update logic
+        // author: authorId === null ...
         // Categories: Replace existing connections with the new set if provided
         categories: categoryIds !== undefined ? { set: categoryConnections } : undefined,
         // Tags: Replace existing connections with the new set if provided
@@ -201,12 +210,12 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
      // Fetch the final updated post with all includes to return to the client
      const finalUpdatedPost = await prisma.blogPost.findUnique({
-        where: { id },
-        include: {
-            author: true,
-            categories: true,
-            tags: true,
-            galleryImages: true,
+       where: { id },
+       include: {
+           // author: true, // Removed author include
+           categories: true,
+           tags: true,
+           galleryImages: true,
         }
      });
 
@@ -218,39 +227,46 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json(finalUpdatedPost);
 
   } catch (error) {
-    console.error(`Error updating blog post ${params.id}:`, error);
+    // Cannot access params directly here if promise awaited inside try
+    console.error(`Error updating blog post:`, error); // Log generic error
     if (error instanceof SyntaxError) {
       return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
     }
-     if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      // Handle specific Prisma errors
-      if (error.code === 'P2003') { // Foreign key constraint failed
-          // Determine which field caused the error if possible (e.g., check error.meta.field_name)
-          const field = (error.meta as { field_name?: string })?.field_name; // Provide a more specific type assertion
-          if (field?.includes('authorId')) return NextResponse.json({ error: 'Invalid Author ID provided.' }, { status: 400 });
-          if (field?.includes('categories')) return NextResponse.json({ error: 'Invalid Category ID provided.' }, { status: 400 });
-          return NextResponse.json({ error: 'Invalid related ID provided.' }, { status: 400 });
-      }
-       if (error.code === 'P2002') { // Unique constraint failed
-          return NextResponse.json({ error: 'Slug conflict, please try changing the title slightly.' }, { status: 409 });
-      }
-       if (error.code === 'P2025') { // Record to update/delete not found
-           return NextResponse.json({ error: 'Blog post not found during update.' }, { status: 404 });
-       }
+     // Type guard to check if error is an object with a 'code' property (like Prisma errors)
+     if (typeof error === 'object' && error !== null && 'code' in error) {
+        const prismaError = error as { code: string; meta?: unknown }; // Type assertion after check
+        // Handle specific Prisma errors
+        if (prismaError.code === 'P2003') { // Foreign key constraint failed
+            // Determine which field caused the error if possible (e.g., check error.meta.field_name)
+            const field = (prismaError.meta as { field_name?: string })?.field_name;
+            // if (field?.includes('authorId')) return NextResponse.json({ error: 'Invalid Author ID provided.' }, { status: 400 }); // Removed author check
+            if (field?.includes('categories')) return NextResponse.json({ error: 'Invalid Category ID provided.' }, { status: 400 });
+            return NextResponse.json({ error: 'Invalid related ID provided.' }, { status: 400 });
+        }
+         if (prismaError.code === 'P2002') { // Unique constraint failed
+            return NextResponse.json({ error: 'Slug conflict, please try changing the title slightly.' }, { status: 409 });
+        }
+         if (prismaError.code === 'P2025') { // Record to update/delete not found
+             return NextResponse.json({ error: 'Blog post not found during update.' }, { status: 404 });
+         }
     }
     return NextResponse.json({ error: 'Failed to update blog post' }, { status: 500 });
   }
 }
 
 // DELETE handler to delete a blog post by ID (Admin only)
-export async function DELETE({ params }: RouteParams) { // Removed unused request parameter
+export async function DELETE(
+    request: NextRequest,
+    { params: paramsPromise }: { params: Promise<{ id: string }> } // Type params as Promise
+) {
   const session = await auth(); // Use the auth() helper
   if (!session?.user || session.user.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
-    const id = parseInt(params.id, 10);
+    const params = await paramsPromise; // Await the params promise
+    const id = parseInt(params.id, 10); // Access id from resolved params
     if (isNaN(id)) {
       return NextResponse.json({ error: 'Invalid ID format' }, { status: 400 });
     }
@@ -267,7 +283,8 @@ export async function DELETE({ params }: RouteParams) { // Removed unused reques
 
     return NextResponse.json({ message: 'Blog post deleted successfully' }, { status: 200 }); // Or 204 No Content
   } catch (error) {
-    console.error(`Error deleting blog post ${params.id}:`, error);
+    // Cannot access params directly here if promise awaited inside try
+    console.error(`Error deleting blog post:`, error); // Log generic error
     // Add specific Prisma error handling if needed
     return NextResponse.json({ error: 'Failed to delete blog post' }, { status: 500 });
   }

@@ -4,11 +4,12 @@ import { auth } from '@/auth'; // Import from the central auth config file
 import prisma from '@/lib/prisma';
 import { slugify } from '@/lib/slugify';
 
-interface RouteParams {
-  params: {
-    id: string;
-  };
-}
+// Removed unused RouteParams interface
+// interface RouteParams {
+//   params: {
+//     id: string;
+//   };
+// }
 
 // Function to generate a unique slug, checking against other case studies
 async function generateUniqueSlug(title: string, currentId: number): Promise<string> {
@@ -28,14 +29,18 @@ async function generateUniqueSlug(title: string, currentId: number): Promise<str
 
 
 // GET handler to fetch a single case study by ID (Admin only)
-export async function GET(_request: NextRequest, { params }: RouteParams) {
+export async function GET(
+    request: NextRequest, // Keep request parameter
+    { params: paramsPromise }: { params: Promise<{ id: string }> } // Type params as Promise
+) {
   const session = await auth(); // Use the auth() helper
   if (!session?.user || session.user.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
-    const id = parseInt(params.id, 10);
+    const params = await paramsPromise; // Await the params promise
+    const id = parseInt(params.id, 10); // Access id from resolved params
     if (isNaN(id)) {
       return NextResponse.json({ error: 'Invalid ID format' }, { status: 400 });
     }
@@ -50,20 +55,25 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(study);
   } catch (error) {
-    console.error(`Error fetching case study ${params.id}:`, error);
+    // Cannot access params directly here if promise awaited inside try
+    console.error(`Error fetching case study:`, error); // Log generic error
     return NextResponse.json({ error: 'Failed to fetch case study' }, { status: 500 });
   }
 }
 
 // PUT handler to update a case study by ID (Admin only)
-export async function PUT(request: NextRequest, { params }: RouteParams) {
+export async function PUT(
+    request: NextRequest,
+    { params: paramsPromise }: { params: Promise<{ id: string }> } // Type params as Promise
+) {
   const session = await auth(); // Use the auth() helper
   if (!session?.user || session.user.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
-    const id = parseInt(params.id, 10);
+    const params = await paramsPromise; // Await the params promise
+    const id = parseInt(params.id, 10); // Access id from resolved params
     if (isNaN(id)) {
       return NextResponse.json({ error: 'Invalid ID format' }, { status: 400 });
     }
@@ -111,7 +121,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(updatedStudy);
   } catch (error) {
-    console.error(`Error updating case study ${params.id}:`, error);
+    // Cannot access params directly here if promise awaited inside try
+    console.error(`Error updating case study:`, error); // Log generic error
      if (error instanceof SyntaxError) {
         return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
     }
@@ -120,14 +131,18 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 }
 
 // DELETE handler to delete a case study by ID (Admin only)
-export async function DELETE(_request: NextRequest, { params }: RouteParams) {
+export async function DELETE(
+    request: NextRequest, // Keep request parameter
+    { params: paramsPromise }: { params: Promise<{ id: string }> } // Type params as Promise
+) {
   const session = await auth(); // Use the auth() helper
   if (!session?.user || session.user.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
-    const id = parseInt(params.id, 10);
+    const params = await paramsPromise; // Await the params promise
+    const id = parseInt(params.id, 10); // Access id from resolved params
     if (isNaN(id)) {
       return NextResponse.json({ error: 'Invalid ID format' }, { status: 400 });
     }
@@ -143,7 +158,8 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ message: 'Case study deleted successfully' }, { status: 200 });
   } catch (error) {
-    console.error(`Error deleting case study ${params.id}:`, error);
+    // Cannot access params directly here if promise awaited inside try
+    console.error(`Error deleting case study:`, error); // Log generic error
     return NextResponse.json({ error: 'Failed to delete case study' }, { status: 500 });
   }
 }

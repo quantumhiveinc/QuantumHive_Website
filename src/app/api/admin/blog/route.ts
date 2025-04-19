@@ -3,7 +3,7 @@ import { NextResponse, NextRequest } from 'next/server';
 import { auth } from '@/auth'; // Import from the central auth config file
 import prisma from '@/lib/prisma';
 import { slugify } from '@/lib/slugify';
-import { Prisma } from '@prisma/client'; // Import Prisma types if needed for error handling or complex types
+// import { Prisma } from '@prisma/client'; // Removed unused Prisma namespace import
 
 // Function to generate a unique slug for a blog post
 async function generateUniqueSlug(title: string): Promise<string> {
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
       metaTitle,
       metaDescription,
       youtubeUrl,
-      authorId, // Expecting the ID of the selected author
+      // authorId, // Removed authorId
       categoryIds, // Expecting an array of category IDs: [1, 2, ...]
       tagNames, // Expecting an array of tag names: ["Tech", "Next.js", ...]
       galleryImages, // Expecting an array of objects: [{ url: "...", altText: "..." }, ...]
@@ -77,7 +77,8 @@ export async function POST(request: NextRequest) {
       : [];
 
 
-    const newPostData: Prisma.BlogPostCreateInput = {
+    // Remove explicit type annotation as a workaround for TS error
+    const newPostData = {
         title,
         slug,
         description,
@@ -88,7 +89,7 @@ export async function POST(request: NextRequest) {
         metaTitle,
         metaDescription,
         youtubeUrl,
-        author: authorId ? { connect: { id: Number(authorId) } } : undefined, // Connect author if ID provided
+        // author: authorId ? { connect: { id: Number(authorId) } } : undefined, // Removed author connection
         categories: { connect: connectCategories }, // Connect categories
         tags: { connect: connectOrCreateTags.map(tag => ({ id: tag.id })) }, // Connect existing/new tags
         galleryImages: { create: createGalleryImages }, // Create gallery images
@@ -98,7 +99,7 @@ export async function POST(request: NextRequest) {
     const newPost = await prisma.blogPost.create({
       data: newPostData,
       include: { // Include related data in the response
-          author: true,
+          // author: true, // Removed author include
           categories: true,
           tags: true,
           galleryImages: true,
@@ -111,12 +112,17 @@ export async function POST(request: NextRequest) {
     if (error instanceof SyntaxError) {
       return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
     }
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      // Handle specific Prisma errors, e.g., foreign key constraint violation if authorId is invalid
-      if (error.code === 'P2003') { // Foreign key constraint failed
-          return NextResponse.json({ error: 'Invalid author or category ID provided.' }, { status: 400 });
+    // Type guard to check if error is an object with a 'code' property (like Prisma errors)
+    if (typeof error === 'object' && error !== null && 'code' in error) {
+       const prismaError = error as { code: string; meta?: unknown }; // Type assertion after check
+      // Handle specific Prisma errors
+      if (prismaError.code === 'P2003') { // Foreign key constraint failed
+          // Check if the error relates to categories (author check removed)
+          const field = (prismaError.meta as { field_name?: string })?.field_name;
+          if (field?.includes('categories')) return NextResponse.json({ error: 'Invalid Category ID provided.' }, { status: 400 });
+          return NextResponse.json({ error: 'Invalid related ID provided.' }, { status: 400 }); // Generic FK error
       }
-       if (error.code === 'P2002') { // Unique constraint failed (likely slug, should be rare with generation logic)
+       if (prismaError.code === 'P2002') { // Unique constraint failed (likely slug, should be rare with generation logic)
           return NextResponse.json({ error: 'Slug conflict, please try changing the title slightly.' }, { status: 409 });
       }
     }
@@ -142,7 +148,7 @@ export async function GET() { // Removed unused _request parameter
         createdAt: 'desc',
       },
       include: {
-        author: { select: { id: true, name: true } }, // Select only needed author fields
+        // author: { select: { id: true, name: true } }, // Removed author include
         categories: { select: { id: true, name: true } }, // Select only needed category fields
         tags: { select: { id: true, name: true } }, // Select only needed tag fields
       }

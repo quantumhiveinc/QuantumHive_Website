@@ -11,12 +11,13 @@ import { JSONContent } from '@tiptap/react'; // Import JSONContent for type asse
 import RenderTiptapContent from '../../../components/RenderTiptapContent'; // Assume this component exists/will be created
 import GallerySlider from '../../../components/GallerySlider'; // Assume this component exists/will be created
 import YouTubeEmbed from '../../../components/YouTubeEmbed'; // Assume this component exists/will be created
-import AuthorInfo, { type Author } from '../../../components/AuthorInfo'; // Assume this component exists/will be created
+// import AuthorInfo, { type Author } from '../../../components/AuthorInfo'; // Removed AuthorInfo import
 
 interface BlogPostPageProps {
-  params: {
+  // Update params to be a Promise as expected by Next.js 15+ for Server Components
+  params: Promise<{
     slug: string;
-  };
+  }>;
 }
 
 // Function to fetch a single blog post by slug
@@ -25,7 +26,7 @@ async function getPost(slug: string) {
   const post = await prisma.blogPost.findUnique({
     where: { slug: slug, published: true },
     include: {
-      author: true, // Include full author details
+      // author: true, // Removed author include
       categories: { select: { id: true, name: true, slug: true } }, // Select needed fields
       tags: { select: { id: true, name: true, slug: true } },       // Select needed fields
       galleryImages: { select: { id: true, url: true, altText: true } }, // Select needed fields
@@ -40,10 +41,11 @@ async function getPost(slug: string) {
 
 // Generate dynamic metadata based on the post
 export async function generateMetadata(
-  { params }: BlogPostPageProps
+  { params: paramsPromise }: BlogPostPageProps // Rename to avoid conflict after awaiting
   // _parent: ResolvingMetadata // Removed unused parent parameter
 ): Promise<Metadata> {
-  const slug = params.slug;
+  const params = await paramsPromise; // Await the params promise
+  const slug = params.slug; // Access slug from resolved params
   // Fetch post including fields needed for metadata
   const post = await prisma.blogPost.findUnique({
       where: { slug },
@@ -56,7 +58,7 @@ export async function generateMetadata(
           featuredImageUrl: true,
           metaTitle: true,
           metaDescription: true,
-          author: { select: { name: true } } // Select author name for potential use
+          // author: { select: { name: true } } // Removed author selection
       }
   });
 
@@ -84,7 +86,7 @@ export async function generateMetadata(
       type: 'article',
       publishedTime: post.publishedAt?.toISOString(),
       modifiedTime: post.updatedAt.toISOString(),
-      authors: post.author ? [post.author.name] : undefined, // Add author if available
+      // authors: post.author ? [post.author.name] : undefined, // Removed author metadata
       images: post.featuredImageUrl ? [ // Use featured image if available
         {
           url: post.featuredImageUrl,
@@ -112,14 +114,16 @@ export async function generateStaticParams() {
     select: { slug: true }, // Only select the slug
   });
 
-  return posts.map((post) => ({
+  // Add explicit type for 'post' parameter
+  return posts.map((post: { slug: string }) => ({
     slug: post.slug,
   }));
 }
 
 // The page component itself (Server Component)
-export default async function BlogPostPage({ params }: BlogPostPageProps) {
-  const post = await getPost(params.slug);
+export default async function BlogPostPage({ params: paramsPromise }: BlogPostPageProps) { // Rename to avoid conflict
+  const params = await paramsPromise; // Await the params promise
+  const post = await getPost(params.slug); // Use resolved params
 
   const breadcrumbItems = [
     { label: 'Blog', href: '/blog' },
@@ -148,24 +152,26 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-[#EDEDED] mb-4">{post.title}</h1>
              {/* Categories and Tags */}
              <div className="flex flex-wrap gap-2 mb-4 text-sm">
-                {post.categories.map(category => (
+                 {/* Add explicit type for 'category' parameter */}
+                {post.categories.map((category: { id: number; name: string; slug: string }) => (
                     <Link key={category.id} href={`/blog/category/${category.slug}`} className="bg-primary/10 text-primary px-2 py-1 rounded hover:bg-primary/20 transition-colors">
                         {category.name}
                     </Link>
                 ))}
-                 {post.tags.map(tag => (
+                 {/* Add explicit type for 'tag' parameter */}
+                 {post.tags.map((tag: { id: number; name: string; slug: string }) => (
                     <Link key={tag.id} href={`/blog/tag/${tag.slug}`} className="bg-secondary/10 text-secondary px-2 py-1 rounded hover:bg-secondary/20 transition-colors">
                         #{tag.name}
                     </Link>
                 ))}
             </div>
-            {/* Author and Date */}
+            {/* Date */}
             <div className="flex items-center space-x-4 text-sm text-[#A1A1AA]">
-               {/* Assert author type, especially socialMediaLinks */}
-               {post.author && <AuthorInfo author={post.author as Author} />} {/* Use AuthorInfo component with specific type assertion */}
-               {post.publishedAt && (
-                 <span>&middot;</span> // Separator
-               )}
+               {/* Removed AuthorInfo component */}
+               {/* {post.author && <AuthorInfo author={post.author as Author} />} */}
+               {/* {post.publishedAt && (
+                 <span>&middot;</span> // Separator - No longer needed if only date is shown
+               )} */}
                {post.publishedAt && (
                  <time dateTime={post.publishedAt.toISOString()}>
                     {new Date(post.publishedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}

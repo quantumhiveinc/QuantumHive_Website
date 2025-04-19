@@ -27,8 +27,8 @@ model BlogPost {
   youtubeUrl       String?  // URL for YouTube video embed
 
   // Relations
-  authorId         Int?
-  author           Author?  @relation(fields: [authorId], references: [id], onDelete: SetNull) // Link to Author, set null if author deleted
+  // authorId         Int? // Removed Author relation
+  // author           Author?  @relation(fields: [authorId], references: [id], onDelete: SetNull) // Removed Author relation
 
   categories       Category[] @relation("BlogPostCategories") // Many-to-many with Category
   tags             Tag[]      @relation("BlogPostTags")     // Many-to-many with Tag
@@ -53,22 +53,8 @@ model CaseStudy {
   @@map("case_studies")
 }
 
-// Model for Authors
-model Author {
-  id              Int      @id @default(autoincrement())
-  name            String
-  slug            String   @unique // Added slug for potential author pages
-  bio             String?
-  profileImageUrl String?  // URL for profile image (e.g., from S3)
-  socialMediaLinks Json?   // Store links like { "twitter": "...", "linkedin": "..." }
-
-  posts           BlogPost[] // Relation to BlogPosts written by this author
-
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  @@map("authors")
-}
+// Model for Authors (Removed)
+// model Author { ... }
 
 // Model for Categories
 model Category {
