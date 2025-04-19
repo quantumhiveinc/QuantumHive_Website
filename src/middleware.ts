@@ -39,9 +39,12 @@ export async function middleware(request: NextRequest) {
       console.log("Middleware: No session, redirecting to login for", pathname);
       console.log("Middleware: request.url:", request.url); // <-- ADDED LOG
       console.log("Middleware: request.nextUrl.href:", request.nextUrl.href); // <-- ADDED LOG
-      // Redirect to NextAuth's signin page, which should then redirect to our custom /admin/login (defined in auth.ts pages)
-      const loginUrl = new URL('/api/auth/signin', request.url);
-      loginUrl.searchParams.set('callbackUrl', request.nextUrl.href); // Pass the intended destination
+      // Redirect to NextAuth's signin page, using NEXTAUTH_URL as the base
+      const baseLoginUrl = `${process.env.NEXTAUTH_URL}/api/auth/signin`;
+      const callbackDestination = `${process.env.NEXTAUTH_URL}${pathname}`; // Construct callback using NEXTAUTH_URL + original path
+      const loginUrl = new URL(baseLoginUrl);
+      loginUrl.searchParams.set('callbackUrl', callbackDestination); // Pass the correctly constructed destination
+      console.log("Middleware: Redirecting to loginUrl:", loginUrl.toString()); // <-- ADDED LOG
       return NextResponse.redirect(loginUrl);
     }
 
@@ -52,8 +55,12 @@ export async function middleware(request: NextRequest) {
        console.log(`Middleware: User not ADMIN (role: ${token.role}), redirecting to login for`, pathname);
        console.log("Middleware: request.url:", request.url); // <-- ADDED LOG
        console.log("Middleware: request.nextUrl.href:", request.nextUrl.href); // <-- ADDED LOG
-       const loginUrl = new URL('/api/auth/signin', request.url);
-       loginUrl.searchParams.set('callbackUrl', request.nextUrl.href);
+       // Redirect to NextAuth's signin page, using NEXTAUTH_URL as the base
+       const baseLoginUrl = `${process.env.NEXTAUTH_URL}/api/auth/signin`;
+       const callbackDestination = `${process.env.NEXTAUTH_URL}${pathname}`; // Construct callback using NEXTAUTH_URL + original path
+       const loginUrl = new URL(baseLoginUrl);
+       loginUrl.searchParams.set('callbackUrl', callbackDestination); // Pass the correctly constructed destination
+       console.log("Middleware: Redirecting to loginUrl (unauthorized):", loginUrl.toString()); // <-- ADDED LOG
        // Redirecting back to login. Consider an 'unauthorized' page for better UX.
        return NextResponse.redirect(loginUrl);
     }
