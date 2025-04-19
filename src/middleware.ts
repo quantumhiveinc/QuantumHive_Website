@@ -5,6 +5,8 @@ import { getToken } from 'next-auth/jwt'; // Import getToken
 
 export async function middleware(request: NextRequest) {
   // Use getToken to directly get the JWT payload from the request cookies
+  console.log("Attempting getToken. NEXTAUTH_SECRET available:", !!process.env.NEXTAUTH_SECRET); // Log if secret exists
+  console.log("Using salt:", '__Secure-authjs.session-token'); // Log the salt being used
   const token = await getToken({
     req: request,
     secret: process.env.NEXTAUTH_SECRET!,
