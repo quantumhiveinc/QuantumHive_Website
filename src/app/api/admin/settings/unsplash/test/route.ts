@@ -69,5 +69,4 @@ export async function POST(request: Request) {
         const message = error instanceof Error ? error.message : String(error);
         return NextResponse.json({ error: `Internal Server Error during test: ${message}` }, { status: 500 });
     }
-    // Note: No prisma.$disconnect() needed here as we didn't connect for this specific route yet.
 }

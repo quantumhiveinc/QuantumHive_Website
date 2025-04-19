@@ -1,9 +1,11 @@
 // src/app/api/admin/blog/route.ts
 import { NextResponse, NextRequest } from 'next/server';
 import { auth } from '@/auth'; // Import from the central auth config file
-import prisma from '@/lib/prisma';
 import { slugify } from '@/lib/slugify';
-// import { Prisma } from '@prisma/client'; // Removed unused Prisma namespace import
+import Blog from '@/models/Blog'; // Removed IBlog import
+import Category from '@/models/Category';
+import Image, { IImage } from '@/models/Image'; // Keep IImage if used
+import dbConnect from '@/lib/mongoose';
 
 // Function to generate a unique slug for a blog post
 async function generateUniqueSlug(title: string): Promise<string> {
@@ -12,7 +14,8 @@ async function generateUniqueSlug(title: string): Promise<string> {
   let counter = 1;
 
   // Check if the slug already exists
-  while (await prisma.blogPost.findUnique({ where: { slug: uniqueSlug } })) {
+  await dbConnect();
+  while (await Blog.findOne({ slug: uniqueSlug })) {
     uniqueSlug = `${slug}-${counter}`;
     counter++;
   }
@@ -42,7 +45,6 @@ export async function POST(request: NextRequest) {
       youtubeUrl,
       // authorId, // Removed authorId
       categoryIds, // Expecting an array of category IDs: [1, 2, ...]
-      tagNames, // Expecting an array of tag names: ["Tech", "Next.js", ...]
       galleryImages, // Expecting an array of objects: [{ url: "...", altText: "..." }, ...]
     } = body;
 
@@ -53,78 +55,102 @@ export async function POST(request: NextRequest) {
 
     const slug = await generateUniqueSlug(title);
 
-    // Prepare data for related models
-    const connectOrCreateTags = tagNames && Array.isArray(tagNames)
-      ? await Promise.all(tagNames.map(async (name: string) => {
-          const slug = slugify(name.trim());
-          return prisma.tag.upsert({
-            where: { slug },
-            update: {}, // No update needed if found
-            create: { name: name.trim(), slug },
-          });
-        }))
+    // Prepare data for related models - Removed commented Tag logic
+
+    // Prepare category IDs
+    const categoryIdsArray = categoryIds && Array.isArray(categoryIds)
+      ? categoryIds.map(id => String(id)) // Ensure IDs are strings for MongoDB
       : [];
 
-    const connectCategories = categoryIds && Array.isArray(categoryIds)
-      ? categoryIds.map((id: number) => ({ id: Number(id) })) // Ensure IDs are numbers
-      : [];
-
-    const createGalleryImages = galleryImages && Array.isArray(galleryImages)
-      ? galleryImages.map((img: { url: string; altText?: string }) => ({
-          url: img.url,
-          altText: img.altText,
-        }))
-      : [];
+    // Prepare tag IDs - Removed commented Tag logic
 
 
-    // Remove explicit type annotation as a workaround for TS error
+    // Create the blog post with the new schema structure
     const newPostData = {
-        title,
-        slug,
-        description,
-        contentJson, // Use the new field
-        published: published ?? false,
-        publishedAt: published ? new Date() : null,
-        featuredImageUrl,
-        metaTitle,
-        metaDescription,
-        youtubeUrl,
-        // author: authorId ? { connect: { id: Number(authorId) } } : undefined, // Removed author connection
-        categories: { connect: connectCategories }, // Connect categories
-        tags: { connect: connectOrCreateTags.map(tag => ({ id: tag.id })) }, // Connect existing/new tags
-        galleryImages: { create: createGalleryImages }, // Create gallery images
+      title,
+      slug,
+      description,
+      contentJson,
+      published: published ?? false,
+      publishedAt: published ? new Date() : null,
+      featuredImageUrl,
+      metaTitle,
+      metaDescription,
+      youtubeUrl,
+      // Store category IDs directly
+      categoryIds: categoryIdsArray,
+      // tagIds: tagIdsArray, // Removed Tag logic
     };
 
 
-    const newPost = await prisma.blogPost.create({
-      data: newPostData,
-      include: { // Include related data in the response
-          // author: true, // Removed author include
-          categories: true,
-          tags: true,
-          galleryImages: true,
-      }
+    await dbConnect();
+    // Create the blog post - Type inference works
+    const newPost = await Blog.create(newPostData);
+
+    // Create gallery images if provided
+    if (galleryImages && Array.isArray(galleryImages) && galleryImages.length > 0) {
+      await Promise.all(galleryImages.map(async (img) => {
+        const newImage = new Image({
+          url: img.url,
+          altText: img.altText || null,
+          blogPostId: newPost._id,
+          isGalleryImage: true
+        });
+        await newImage.save();
+      }));
+    }
+
+    // Fetch the complete post with related data - Type inference works
+    const createdPost = await Blog.findById(newPost._id); // Populate might not be needed if IDs are sufficient for response
+
+    if (!createdPost) {
+      return NextResponse.json({ error: 'Failed to retrieve created post' }, { status: 500 });
+    }
+
+    // Fetch gallery images
+    const createdGalleryImages = await Image.find({
+      blogPostId: newPost._id,
+      isGalleryImage: true
     });
 
-    return NextResponse.json(newPost, { status: 201 });
+    // Fetch categories and tags
+    const categories = createdPost.categoryIds.length > 0
+      ? await Category.find({ _id: { $in: createdPost.categoryIds } })
+      : [];
+
+    // const tags = createdPost.tagIds.length > 0 // Removed Tag logic
+    //   ? await Tag.find({ _id: { $in: createdPost.tagIds } })
+    //   : [];
+
+    // Transform the response to include categories
+    const transformedPost = {
+      ...createdPost.toObject(),
+      galleryImages: createdGalleryImages,
+      categories,
+      // tags // Removed Tag logic
+    };
+
+    return NextResponse.json(transformedPost, { status: 201 });
   } catch (error) {
     console.error("Error creating blog post:", error);
     if (error instanceof SyntaxError) {
       return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
     }
-    // Type guard to check if error is an object with a 'code' property (like Prisma errors)
-    if (typeof error === 'object' && error !== null && 'code' in error) {
-       const prismaError = error as { code: string; meta?: unknown }; // Type assertion after check
-      // Handle specific Prisma errors
-      if (prismaError.code === 'P2003') { // Foreign key constraint failed
-          // Check if the error relates to categories (author check removed)
-          const field = (prismaError.meta as { field_name?: string })?.field_name;
-          if (field?.includes('categories')) return NextResponse.json({ error: 'Invalid Category ID provided.' }, { status: 400 });
-          return NextResponse.json({ error: 'Invalid related ID provided.' }, { status: 400 }); // Generic FK error
-      }
-       if (prismaError.code === 'P2002') { // Unique constraint failed (likely slug, should be rare with generation logic)
-          return NextResponse.json({ error: 'Slug conflict, please try changing the title slightly.' }, { status: 409 });
-      }
+    // Handle Mongoose specific errors
+    if (error instanceof Error && error.name === 'CastError') {
+        return NextResponse.json({ error: 'Invalid ID format provided for Category.' }, { status: 400 });
+    }
+    // Handle Mongoose unique constraint errors (e.g., for slug)
+    if (typeof error === 'object' && error !== null && 'code' in error && error.code === 11000) {
+        const keyPattern = (error as { keyPattern?: Record<string, number> }).keyPattern;
+        if (keyPattern && keyPattern.slug) {
+            return NextResponse.json({ error: 'Slug conflict, please try changing the title slightly.' }, { status: 409 });
+        }
+        return NextResponse.json({ error: 'A unique field constraint was violated.' }, { status: 409 });
+    }
+    if (error instanceof Error && error.name === 'ValidationError') {
+        // Extract specific validation messages if needed
+        return NextResponse.json({ error: `Validation failed: ${error.message}` }, { status: 400 });
     }
     return NextResponse.json({ error: 'Failed to create blog post' }, { status: 500 });
   }
@@ -143,17 +169,37 @@ export async function GET() { // Removed unused _request parameter
   try {
     // TODO: Add pagination, sorting, filtering later if needed for admin
     // Include related data when listing posts for the admin view
-    const posts = await prisma.blogPost.findMany({
-      orderBy: {
-        createdAt: 'desc',
-      },
-      include: {
-        // author: { select: { id: true, name: true } }, // Removed author include
-        categories: { select: { id: true, name: true } }, // Select only needed category fields
-        tags: { select: { id: true, name: true } }, // Select only needed tag fields
-      }
+    await dbConnect();
+    // Type inference works
+    const posts = await Blog.find()
+      .sort({ createdAt: 'desc' }) // Mongoose uses 'desc' or -1
+      .exec();
+
+  // Transform posts to include categories
+  const transformedPosts = await Promise.all(posts.map(async (post) => { // Removed IBlog type
+    // Fetch gallery images
+    const galleryImages: IImage[] = await Image.find({ // Keep IImage if used elsewhere
+      blogPostId: post._id,
+      isGalleryImage: true
     });
-    return NextResponse.json(posts);
+
+      // Fetch categories and tags
+      const categories = post.categoryIds.length > 0
+        ? await Category.find({ _id: { $in: post.categoryIds } })
+        : [];
+
+      // const tags = post.tagIds.length > 0 // Removed Tag logic
+      //   ? await Tag.find({ _id: { $in: post.tagIds } })
+      //   : [];
+
+      return {
+        ...post.toObject(),
+        galleryImages,
+        categories,
+      };
+    }));
+
+    return NextResponse.json(transformedPosts);
   } catch (error) {
     console.error("Error fetching blog posts:", error);
     return NextResponse.json({ error: 'Failed to fetch blog posts' }, { status: 500 });

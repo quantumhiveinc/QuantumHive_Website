@@ -1,6 +1,6 @@
 // src/app/blog/[slug]/page.tsx
 import React from 'react';
-import prisma from '@/lib/prisma';
+// import prisma from '@/lib/prisma'; // Removed Prisma import
 import { notFound } from 'next/navigation';
 import Breadcrumb from '@/components/Breadcrumb';
 import type { Metadata } from 'next';
@@ -23,15 +23,39 @@ interface BlogPostPageProps {
 // Function to fetch a single blog post by slug
 async function getPost(slug: string) {
   // Fetch post and include all necessary related data
-  const post = await prisma.blogPost.findUnique({
-    where: { slug: slug, published: true },
-    include: {
-      // author: true, // Removed author include
-      categories: { select: { id: true, name: true, slug: true } }, // Select needed fields
-      tags: { select: { id: true, name: true, slug: true } },       // Select needed fields
-      galleryImages: { select: { id: true, url: true, altText: true } }, // Select needed fields
-    },
-  });
+  // const post = await prisma.blogPost.findUnique({ // Commented out Prisma usage
+  //   where: { slug: slug, published: true },
+  //   include: {
+  //     // author: true, // Removed author include
+  //     categories: { select: { id: true, name: true, slug: true } }, // Select needed fields
+  //     tags: { select: { id: true, name: true, slug: true } },       // Select needed fields
+  //     galleryImages: { select: { id: true, url: true, altText: true } }, // Select needed fields
+  //   },
+  // });
+
+  // Placeholder data since Prisma is removed
+  const post = {
+      id: 1,
+      slug: slug,
+      title: `Placeholder Post: ${slug}`,
+      description: 'This is placeholder content as data fetching is disabled.',
+      contentJson: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Placeholder content.' }] }] },
+      published: true,
+      publishedAt: new Date(),
+      updatedAt: new Date(),
+      featuredImageUrl: null,
+      metaTitle: null,
+      metaDescription: null,
+      youtubeUrl: null,
+      authorId: null,
+      categories: [],
+      tags: [],
+      galleryImages: [],
+      featuredImageUnsplashUrl: null,
+      featuredImagePhotographerName: null,
+      featuredImagePhotographerUrl: null,
+  };
+
 
   if (!post) {
     notFound(); // Trigger 404 if post not found or not published
@@ -47,20 +71,33 @@ export async function generateMetadata(
   const params = await paramsPromise; // Await the params promise
   const slug = params.slug; // Access slug from resolved params
   // Fetch post including fields needed for metadata
-  const post = await prisma.blogPost.findUnique({
-      where: { slug },
-      select: { // Select only necessary fields for metadata
-          title: true,
-          description: true,
-          slug: true,
-          publishedAt: true,
-          updatedAt: true,
-          featuredImageUrl: true,
-          metaTitle: true,
-          metaDescription: true,
-          // author: { select: { name: true } } // Removed author selection
-      }
-  });
+  // const post = await prisma.blogPost.findUnique({ // Commented out Prisma usage
+  //     where: { slug },
+  //     select: { // Select only necessary fields for metadata
+  //         title: true,
+  //         description: true,
+  //         slug: true,
+  //         publishedAt: true,
+  //         updatedAt: true,
+  //         featuredImageUrl: true,
+  //         metaTitle: true,
+  //         metaDescription: true,
+  //         // author: { select: { name: true } } // Removed author selection
+  //     }
+  // });
+
+  // Placeholder data since Prisma is removed
+   const post = {
+      slug: slug,
+      title: `Placeholder: ${slug}`,
+      description: 'Placeholder description.',
+      publishedAt: new Date(),
+      updatedAt: new Date(),
+      featuredImageUrl: null,
+      metaTitle: null,
+      metaDescription: null,
+  };
+
 
   if (!post) {
     // Optionally return default metadata or handle not found case
@@ -109,10 +146,13 @@ export async function generateMetadata(
 
 // Generate static paths for published posts at build time
 export async function generateStaticParams() {
-  const posts = await prisma.blogPost.findMany({
-    where: { published: true },
-    select: { slug: true }, // Only select the slug
-  });
+  // const posts = await prisma.blogPost.findMany({ // Commented out Prisma usage
+  //   where: { published: true },
+  //   select: { slug: true }, // Only select the slug
+  // });
+
+  // Return empty array as Prisma is removed
+  const posts: { slug: string }[] = [];
 
   // Add explicit type for 'post' parameter
   return posts.map((post: { slug: string }) => ({

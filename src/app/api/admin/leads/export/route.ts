@@ -1,10 +1,11 @@
 // src/app/api/admin/leads/export/route.ts
 import { NextResponse, NextRequest } from 'next/server';
-import { Prisma, Lead } from '@prisma/client'; // Import Lead type
 import { auth } from '@/auth';
-import prisma from '@/lib/prisma';
+import dbConnect from '@/lib/mongoose'; // Import Mongoose connection
+import Lead, { ILead } from '@/models/Lead'; // Import Mongoose model and interface
+import { FilterQuery } from 'mongoose'; // Import FilterQuery
 
-const ALLOWED_SORT_FIELDS = ['fullName', 'email', 'sourceFormName', 'status', 'submissionTimestamp', 'id', 'phone', 'company', 'message', 'submissionUrl', 'ipAddress', 'createdAt', 'updatedAt']; // Add all relevant fields
+const ALLOWED_SORT_FIELDS = ['fullName', 'email', 'sourceFormName', 'status', 'submissionTimestamp', '_id', 'phone', 'company', 'message', 'submissionUrl', 'ipAddress', 'createdAt', 'updatedAt']; // Use _id for Mongoose
 
 // Helper function to escape CSV fields
 const escapeCsvField = (field: string | number | boolean | Date | null | undefined): string => {
@@ -20,24 +21,26 @@ const escapeCsvField = (field: string | number | boolean | Date | null | undefin
     return stringField;
 };
 
-// Helper function to generate CSV string
-const generateCsv = (leads: Lead[]): string => {
+// Helper function to generate CSV string using Mongoose ILead interface
+const generateCsv = (leads: ILead[]): string => {
     if (!leads || leads.length === 0) {
         return ''; // Return empty string if no leads
     }
 
-    // Define headers explicitly to control order and inclusion
+    // Define headers explicitly to control order and inclusion - use _id
     const headers = [
-        'id', 'fullName', 'email', 'phone', 'company', 'message',
+        '_id', 'fullName', 'email', 'phone', 'company', 'message',
         'sourceFormName', 'submissionUrl', 'submissionTimestamp',
-        'ipAddress', 'status', 'createdAt', 'updatedAt'
+        // 'ipAddress', // Assuming ipAddress is not in ILead schema
+        'status', 'createdAt', 'updatedAt'
     ];
 
     const headerRow = headers.map(escapeCsvField).join(',');
 
     const dataRows = leads.map(lead => {
         return headers.map(header => {
-            let value = lead[header as keyof Lead];
+            // Access Mongoose document properties, handle potential undefined
+            let value = lead[header as keyof ILead];
             // Format dates to ISO string
             if (value instanceof Date) {
                 value = value.toISOString();
@@ -79,15 +82,15 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ message: 'Invalid sortOrder parameter. Use "asc" or "desc".' }, { status: 400 });
         }
 
-        // 3. Build Prisma Where Clause (Same as fetch route)
-        const where: Prisma.LeadWhereInput = {};
-        if (filterFormName) where.sourceFormName = filterFormName;
-        if (filterStatus) where.status = filterStatus;
+        // 3. Build Mongoose Filter Object (Same as fetch route)
+        const filter: FilterQuery<ILead> = {};
+        if (filterFormName) filter.sourceFormName = filterFormName;
+        if (filterStatus) filter.status = filterStatus;
         if (filterStartDate || filterEndDate) {
-            where.submissionTimestamp = {};
+            filter.submissionTimestamp = {};
             if (filterStartDate) {
                 try {
-                    where.submissionTimestamp.gte = new Date(filterStartDate);
+                    filter.submissionTimestamp.$gte = new Date(filterStartDate);
                 } catch {
                     return NextResponse.json({ message: 'Invalid filterStartDate format. Use ISO date string.' }, { status: 400 });
                 }
@@ -96,31 +99,32 @@ export async function GET(request: NextRequest) {
                  try {
                     const endDate = new Date(filterEndDate);
                     endDate.setDate(endDate.getDate() + 1);
-                    where.submissionTimestamp.lt = endDate;
+                    filter.submissionTimestamp.$lt = endDate;
                 } catch {
                     return NextResponse.json({ message: 'Invalid filterEndDate format. Use ISO date string.' }, { status: 400 });
                 }
             }
         }
         if (searchQuery) {
-            where.OR = [
-                { fullName: { contains: searchQuery, mode: 'insensitive' } },
-                { email: { contains: searchQuery, mode: 'insensitive' } },
-                { company: { contains: searchQuery, mode: 'insensitive' } },
+            const searchRegex = { $regex: searchQuery, $options: 'i' };
+            filter.$or = [
+                { fullName: searchRegex },
+                { email: searchRegex },
+                { company: searchRegex },
             ];
         }
 
-        // 4. Build Prisma OrderBy Clause (Same as fetch route)
-        const orderBy: Prisma.LeadOrderByWithRelationInput = {
+        // 4. Build Mongoose Sort Object (Same as fetch route)
+        const sort: { [key: string]: 'asc' | 'desc' } = {
             [sortBy]: sortOrder,
         };
 
-        // 5. Execute Prisma Query (Fetch ALL matching leads)
-        const leads = await prisma.lead.findMany({
-            where,
-            orderBy,
-            // No skip/take for export
-        });
+        // 5. Execute Mongoose Query (Fetch ALL matching leads)
+        await dbConnect(); // Ensure DB connection
+        const leads: ILead[] = await Lead.find(filter)
+            .sort(sort)
+            .exec();
+            // No skip/limit for export
 
         // 6. Generate CSV
         const csvData = generateCsv(leads);
@@ -137,12 +141,11 @@ export async function GET(request: NextRequest) {
 
     } catch (error) {
         console.error("Error generating lead export:", error);
-        if (error instanceof Prisma.PrismaClientKnownRequestError) {
-             return NextResponse.json({ message: 'Database error occurred during export.', error: error.message }, { status: 500 });
-        } else if (error instanceof Error) {
-             return NextResponse.json({ message: 'An unexpected error occurred during export.', error: error.message }, { status: 500 });
-        } else {
-             return NextResponse.json({ message: 'An unknown error occurred during export.' }, { status: 500 });
+        // Handle Mongoose errors
+        if (error instanceof Error && error.name === 'CastError') {
+            return NextResponse.json({ message: 'Invalid ID format in query during export.' }, { status: 400 });
         }
+        // Generic error handling
+        return NextResponse.json({ message: 'An error occurred during lead export.' }, { status: 500 });
     }
 }

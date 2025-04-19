@@ -26,7 +26,7 @@ import {
 import { toast } from "sonner";
 // Removed Dialog imports
 
-// Define the structure of a BlogPost based on our Prisma schema (or API response)
+// Define the structure of a BlogPost
 // Updated BlogPost interface to include fetched relations
 interface BlogPost {
   id: number;

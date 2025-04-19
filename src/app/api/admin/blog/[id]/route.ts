@@ -1,29 +1,31 @@
 // src/app/api/admin/blog/[id]/route.ts
 import { NextResponse, NextRequest } from 'next/server';
 import { auth } from '@/auth'; // Import from the central auth config file
-import prisma from '@/lib/prisma';
 import { slugify } from '@/lib/slugify';
-import { Prisma } from '@prisma/client'; // Revert to only Prisma namespace import
-
-// Removed unused RouteParams interface
-// interface RouteParams {
-//   params: {
-//     id: string;
-//   };
-// }
+import Blog from '@/models/Blog'; // Removed IBlog import
+import Category from '@/models/Category';
+// import Tag from '@/models/Tag'; // Removed Tag import
+import Image, { IImage } from '@/models/Image'; // Keep IImage if used
+import dbConnect from '@/lib/mongoose'; // Import Mongoose connection
 
 // Function to generate a unique slug, checking against other posts
-async function generateUniqueSlug(title: string, currentId: number): Promise<string> {
-  const slug = slugify(title);
-  let uniqueSlug = slug;
+async function generateUniqueSlug(title: string, currentId: string): Promise<string> {
+  const baseSlug = slugify(title);
+  let uniqueSlug = baseSlug;
   let counter = 1;
 
-  // Check if the slug already exists for a *different* post
-  let existingPost = await prisma.blogPost.findUnique({ where: { slug: uniqueSlug } });
-  while (existingPost && existingPost.id !== currentId) {
-    uniqueSlug = `${slug}-${counter}`;
+  await dbConnect(); // Ensure DB connection
+  // Check if the slug already exists for a *different* post using Mongoose
+  let existingPost = await Blog.findOne({ slug: uniqueSlug, _id: { $ne: currentId } }); // Use Mongoose findOne and $ne
+  while (existingPost) {
+    uniqueSlug = `${baseSlug}-${counter}`;
     counter++;
-    existingPost = await prisma.blogPost.findUnique({ where: { slug: uniqueSlug } });
+    existingPost = await Blog.findOne({ slug: uniqueSlug, _id: { $ne: currentId } });
+    // Safety break
+    if (counter > 100) {
+        console.error(`Failed to generate unique blog slug for "${title}" (excluding ID ${currentId}) after 100 attempts.`);
+        throw new Error(`Could not generate unique slug for blog post ${title}`);
+    }
   }
   return uniqueSlug;
 }
@@ -32,39 +34,59 @@ async function generateUniqueSlug(title: string, currentId: number): Promise<str
 // GET handler to fetch a single blog post by ID (Admin only)
 export async function GET(
     request: NextRequest,
-    { params: paramsPromise }: { params: Promise<{ id: string }> } // Type params as Promise
+    context: { params: Promise<{ id: string }> } // Directly type the context param
 ) {
   const session = await auth(); // Use the auth() helper
   if (!session?.user || session.user.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  try {
-    const params = await paramsPromise; // Await the params promise
-    const id = parseInt(params.id, 10); // Access id from resolved params
-    if (isNaN(id)) {
-      return NextResponse.json({ error: 'Invalid ID format' }, { status: 400 });
-    }
+  // Await the params promise here, before the try block, so id is available in catch
+  const resolvedParams = await context.params;
+  const id = resolvedParams.id; // Access id via resolvedParams.id
 
-    // Include related data when fetching a single post
-    const post = await prisma.blogPost.findUnique({
-      where: { id },
-      include: {
-        // author: { select: { id: true, name: true } }, // Removed author include
-        categories: { select: { id: true, name: true } },
-        tags: { select: { id: true, name: true } },
-        galleryImages: { select: { id: true, url: true, altText: true } }, // Include gallery images
-      },
-    });
+  try {
+    await dbConnect(); // Ensure DB connection
+
+    // Fetch the post using Mongoose - Type inference will work here
+    const post = await Blog.findById(id);
 
     if (!post) {
       return NextResponse.json({ error: 'Blog post not found' }, { status: 404 });
     }
 
-    return NextResponse.json(post);
+    // Fetch gallery images using Mongoose
+    const galleryImages: IImage[] = await Image.find({
+      blogPostId: id,
+      isGalleryImage: true
+    }).select('id url altText'); // Select specific fields
+
+    // Fetch categories using Mongoose
+    const categories = post.categoryIds && post.categoryIds.length > 0
+      ? await Category.find({ _id: { $in: post.categoryIds } }).select('id name')
+      : [];
+
+    // Fetch tags using Mongoose - Removed Tag logic
+    // const tags = post.tagIds && post.tagIds.length > 0
+    //   ? await Tag.find({ _id: { $in: post.tagIds } }).select('id name')
+    //   : [];
+
+    // Transform the response using Mongoose document's toObject()
+    const transformedPost = {
+      ...post.toObject(), // Convert Mongoose document to plain object
+      galleryImages,
+      categories,
+      // tags // Removed Tag logic
+    };
+
+
+    return NextResponse.json(transformedPost);
   } catch (error) {
-    // Cannot access params directly here if promise awaited inside try
-    console.error(`Error fetching blog post:`, error); // Log generic error
+    console.error(`Error fetching blog post with ID ${id}:`, error); // Log generic error with ID using resolved id
+    // Handle Mongoose CastError for invalid ID format
+    if (error instanceof Error && error.name === 'CastError') {
+        return NextResponse.json({ error: 'Invalid blog post ID format.' }, { status: 400 });
+    }
     return NextResponse.json({ error: 'Failed to fetch blog post' }, { status: 500 });
   }
 }
@@ -72,20 +94,18 @@ export async function GET(
 // PUT handler to update a blog post by ID (Admin only)
 export async function PUT(
     request: NextRequest,
-    { params: paramsPromise }: { params: Promise<{ id: string }> } // Type params as Promise
+    context: { params: Promise<{ id: string }> } // Directly type the context param
 ) {
   const session = await auth(); // Use the auth() helper
   if (!session?.user || session.user.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  try {
-    const params = await paramsPromise; // Await the params promise
-    const id = parseInt(params.id, 10); // Access id from resolved params
-    if (isNaN(id)) {
-      return NextResponse.json({ error: 'Invalid ID format' }, { status: 400 });
-    }
+  // Await the params promise here, before the try block, so id is available in catch
+  const resolvedParams = await context.params;
+  const id = resolvedParams.id; // Access id via resolvedParams.id
 
+  try {
     const body = await request.json();
     // Destructure all potential fields from the body
     const {
@@ -99,17 +119,17 @@ export async function PUT(
         metaDescription,
         youtubeUrl,
         // authorId, // Removed authorId
-        categoryIds, // Array of numbers
-        tagNames, // Array of strings
+        categoryIds, // Array of strings (ObjectIds)
+        // tagNames, // Array of strings - Removed Tag logic
         galleryImages, // Array of objects: [{ url: "...", altText: "..." }]
     } = body;
 
     // Fetch the existing post to compare
-    // Fetch the existing post *with* its current relations for comparison/update
-    const existingPost = await prisma.blogPost.findUnique({
-        where: { id },
-        include: { categories: true, tags: true, galleryImages: true } // Include relations needed for update logic
-    });
+    await dbConnect(); // Ensure DB connection
+
+    // Fetch the existing post using Mongoose - Type inference works
+    const existingPost = await Blog.findById(id);
+
     if (!existingPost) {
       return NextResponse.json({ error: 'Blog post not found' }, { status: 404 });
     }
@@ -118,12 +138,12 @@ export async function PUT(
 
     // Regenerate slug only if the title has changed or if a specific slug was requested
     if (title && title !== existingPost.title) {
-      finalSlug = await generateUniqueSlug(title, id);
+      finalSlug = await generateUniqueSlug(title, id); // Use resolved id
     } else if (requestedSlug && requestedSlug !== existingPost.slug) {
-       // If a specific slug is requested and it's different, validate its uniqueness
-       const slugExists = await prisma.blogPost.findUnique({ where: { slug: requestedSlug } });
-       if (slugExists && slugExists.id !== id) {
-           return NextResponse.json({ error: 'Requested slug is already in use' }, { status: 409 }); // 409 Conflict
+       // If a specific slug is requested and it's different, validate its uniqueness using Mongoose
+       const slugExists = await Blog.findOne({ slug: requestedSlug, _id: { $ne: id } });
+       if (slugExists) {
+           return NextResponse.json({ error: 'Requested slug is already in use by another post' }, { status: 409 }); // 409 Conflict
        }
        finalSlug = requestedSlug;
     }
@@ -137,24 +157,24 @@ export async function PUT(
       publishedAt = null; // Clear publish date if unpublishing
     }
 
-    // Prepare updates for relations
-    const connectOrCreateTags = tagNames && Array.isArray(tagNames)
-      ? await Promise.all(tagNames.map(async (name: string) => {
-          const slug = slugify(name.trim());
-          return prisma.tag.upsert({
-            where: { slug },
-            update: {},
-            create: { name: name.trim(), slug },
-          });
-        }))
-      : [];
+    // Prepare updates for relations - Removed Tag logic
+    // Handle tags - create or find them first
+    // const connectOrCreateTags = tagNames && Array.isArray(tagNames)
+    //   ? await Promise.all(tagNames.map(async (name: string) => {
+    //       const tagName = name.trim();
+    //       const tagSlug = slugify(tagName);
+    //       // Find or create tag using Mongoose
+    //       let tag = await Tag.findOne({ slug: tagSlug });
+    //       if (!tag) {
+    //         tag = await Tag.create({ name: tagName, slug: tagSlug });
+    //       }
+    //       return tag;
+    //     }))
+    //   : [];
 
-    const categoryConnections = categoryIds && Array.isArray(categoryIds)
-        ? categoryIds.map((catId: number) => ({ id: Number(catId) }))
-        : [];
+    // We'll use categoryIds directly when creating the relations
 
-    // --- Prepare Base Update Data (excluding gallery images) ---
-    // Remove explicit type annotation as a workaround for TS error
+    // --- Prepare Base Update Data including category and tag IDs ---
     const updateData = {
         title: title ?? existingPost.title,
         slug: finalSlug,
@@ -166,90 +186,101 @@ export async function PUT(
         metaTitle: metaTitle !== undefined ? metaTitle : existingPost.metaTitle,
         metaDescription: metaDescription !== undefined ? metaDescription : existingPost.metaDescription,
         youtubeUrl: youtubeUrl !== undefined ? youtubeUrl : existingPost.youtubeUrl,
-        // Removed author update logic
-        // author: authorId === null ...
-        // Categories: Replace existing connections with the new set if provided
-        categories: categoryIds !== undefined ? { set: categoryConnections } : undefined,
-        // Tags: Replace existing connections with the new set if provided
-        tags: tagNames !== undefined ? { set: connectOrCreateTags.map(tag => ({ id: tag.id })) } : undefined,
+        // Update category IDs if provided
+        categoryIds: categoryIds !== undefined
+            ? (Array.isArray(categoryIds) ? categoryIds : [])
+            : existingPost.categoryIds,
+        // Update tag IDs if provided - Removed Tag logic
+        // tagIds: tagNames !== undefined
+        //     ? connectOrCreateTags.map((tag: Tag) => tag.id) // Add explicit type Tag
+        //     : existingPost.tagIds,
     };
 
-    // --- Use a transaction for atomicity, especially with gallery updates ---
-    const transactionSteps: Prisma.PrismaPromise<unknown>[] = []; // Use unknown instead of any
+    // --- Update using Mongoose ---
 
-    // 1. Update the main post data (excluding gallery images for now)
-    transactionSteps.push(
-        prisma.blogPost.update({
-            where: { id },
-            data: updateData,
-        })
-    );
+    // 1. Update the main post data
+    const updatedPost = await Blog.findByIdAndUpdate(id, updateData, { new: true }); // {new: true} returns the updated document
+
+    if (!updatedPost) {
+        // Should not happen if findById worked earlier, but good practice
+        return NextResponse.json({ error: 'Blog post not found during update.' }, { status: 404 });
+    }
 
     // 2. Handle Gallery Image Updates (if galleryImages array is provided)
-    // Strategy: Delete existing images for this post, then create new ones.
     if (galleryImages !== undefined && Array.isArray(galleryImages)) {
-        // Delete existing images
-        transactionSteps.push(prisma.image.deleteMany({ where: { blogPostId: id } }));
+        // Delete existing gallery images for this post
+        await Image.deleteMany({ blogPostId: id, isGalleryImage: true });
 
         // Create new images if the array is not empty
         if (galleryImages.length > 0) {
-            transactionSteps.push(
-                prisma.image.createMany({
-                    data: galleryImages.map((img: { url: string; altText?: string }) => ({
-                        url: img.url,
-                        altText: img.altText,
-                        blogPostId: id, // Link to the current post
-                    })),
-                })
-            );
+            const imageDocsToCreate = galleryImages.map(img => ({
+                url: img.url,
+                altText: img.altText || null,
+                blogPostId: id,
+                isGalleryImage: true
+            }));
+            await Image.insertMany(imageDocsToCreate);
         }
     }
 
-    // Execute the transaction
-    await prisma.$transaction(transactionSteps);
+     // Fetch the final updated post data again to populate relations if needed,
+     // or construct the response manually if updateData is sufficient.
+     // For simplicity here, we'll re-fetch to ensure consistency.
 
-     // Fetch the final updated post with all includes to return to the client
-     const finalUpdatedPost = await prisma.blogPost.findUnique({
-       where: { id },
-       include: {
-           // author: true, // Removed author include
-           categories: true,
-           tags: true,
-           galleryImages: true,
-        }
-     });
+     const finalUpdatedPostData = await Blog.findById(id);
 
-    if (!finalUpdatedPost) {
-        // Should not happen if transaction succeeded, but good practice to check
-        return NextResponse.json({ error: 'Failed to retrieve updated post after transaction.' }, { status: 500 });
-    }
+     if (!finalUpdatedPostData) {
+        return NextResponse.json({ error: 'Failed to retrieve updated post after update.' }, { status: 500 });
+     }
 
-    return NextResponse.json(finalUpdatedPost);
+     // Fetch updated gallery images
+     const updatedGalleryImages = await Image.find({
+        blogPostId: id,
+        isGalleryImage: true
+     }).select('id url altText');
+
+     // Fetch updated categories and tags
+     const updatedCategories = finalUpdatedPostData.categoryIds && finalUpdatedPostData.categoryIds.length > 0
+        ? await Category.find({ _id: { $in: finalUpdatedPostData.categoryIds } }).select('id name')
+        : [];
+
+    // const updatedTags = finalUpdatedPostData.tagIds && finalUpdatedPostData.tagIds.length > 0 // Removed Tag logic
+    //    ? await Tag.find({ _id: { $in: finalUpdatedPostData.tagIds } }).select('id name')
+    //    : [];
+
+    // Transform the response
+     const transformedFinalPost = {
+       ...finalUpdatedPostData.toObject(),
+       galleryImages: updatedGalleryImages,
+       categories: updatedCategories,
+       // tags: updatedTags // Removed Tag logic
+     };
+
+
+    return NextResponse.json(transformedFinalPost);
 
   } catch (error) {
-    // Cannot access params directly here if promise awaited inside try
-    console.error(`Error updating blog post:`, error); // Log generic error
+    console.error(`Error updating blog post with ID ${id}:`, error); // Log generic error with ID using resolved id
     if (error instanceof SyntaxError) {
       return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
     }
-     // Type guard to check if error is an object with a 'code' property (like Prisma errors)
-     if (typeof error === 'object' && error !== null && 'code' in error) {
-        const prismaError = error as { code: string; meta?: unknown }; // Type assertion after check
-        // Handle specific Prisma errors
-        if (prismaError.code === 'P2003') { // Foreign key constraint failed
-            // Determine which field caused the error if possible (e.g., check error.meta.field_name)
-            const field = (prismaError.meta as { field_name?: string })?.field_name;
-            // if (field?.includes('authorId')) return NextResponse.json({ error: 'Invalid Author ID provided.' }, { status: 400 }); // Removed author check
-            if (field?.includes('categories')) return NextResponse.json({ error: 'Invalid Category ID provided.' }, { status: 400 });
-            return NextResponse.json({ error: 'Invalid related ID provided.' }, { status: 400 });
-        }
-         if (prismaError.code === 'P2002') { // Unique constraint failed
-            return NextResponse.json({ error: 'Slug conflict, please try changing the title slightly.' }, { status: 409 });
-        }
-         if (prismaError.code === 'P2025') { // Record to update/delete not found
-             return NextResponse.json({ error: 'Blog post not found during update.' }, { status: 404 });
+     // Handle Mongoose specific errors
+     if (error instanceof Error && error.name === 'CastError') {
+         return NextResponse.json({ error: 'Invalid ID format provided for related data (Category or Tag).' }, { status: 400 });
+     }
+     // Handle Mongoose unique constraint errors (e.g., for slug)
+     if (typeof error === 'object' && error !== null && 'code' in error && error.code === 11000) {
+         // Check which key caused the error (e.g., slug)
+         const keyPattern = (error as { keyPattern?: Record<string, number> }).keyPattern;
+         if (keyPattern && keyPattern.slug) {
+             return NextResponse.json({ error: 'Slug conflict, please try changing the title slightly.' }, { status: 409 });
          }
-    }
+         return NextResponse.json({ error: 'A unique field constraint was violated.' }, { status: 409 });
+     }
+     if (error instanceof Error && error.name === 'ValidationError') {
+         // Extract specific validation messages if needed
+         return NextResponse.json({ error: `Validation failed: ${error.message}` }, { status: 400 });
+     }
     return NextResponse.json({ error: 'Failed to update blog post' }, { status: 500 });
   }
 }
@@ -257,35 +288,41 @@ export async function PUT(
 // DELETE handler to delete a blog post by ID (Admin only)
 export async function DELETE(
     request: NextRequest,
-    { params: paramsPromise }: { params: Promise<{ id: string }> } // Type params as Promise
+    context: { params: Promise<{ id: string }> } // Directly type the context param
 ) {
   const session = await auth(); // Use the auth() helper
   if (!session?.user || session.user.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  try {
-    const params = await paramsPromise; // Await the params promise
-    const id = parseInt(params.id, 10); // Access id from resolved params
-    if (isNaN(id)) {
-      return NextResponse.json({ error: 'Invalid ID format' }, { status: 400 });
-    }
+  // Await the params promise here, before the try block, so id is available in catch
+  const resolvedParams = await context.params;
+  const id = resolvedParams.id; // Access id via resolvedParams.id
 
-    // Check if post exists before deleting
-    const existingPost = await prisma.blogPost.findUnique({ where: { id } });
+  try {
+    await dbConnect(); // Ensure DB connection
+
+    // Check if post exists before deleting using Mongoose
+    const existingPost = await Blog.findById(id);
     if (!existingPost) {
       return NextResponse.json({ error: 'Blog post not found' }, { status: 404 });
     }
 
-    await prisma.blogPost.delete({
-      where: { id },
-    });
+    // Delete the blog post
+    await Blog.findByIdAndDelete(id);
 
-    return NextResponse.json({ message: 'Blog post deleted successfully' }, { status: 200 }); // Or 204 No Content
+    // Also delete associated images (featured and gallery)
+    await Image.deleteMany({ blogPostId: id });
+
+    // Return 204 No Content for successful deletion
+    return new NextResponse(null, { status: 204 });
+
   } catch (error) {
-    // Cannot access params directly here if promise awaited inside try
-    console.error(`Error deleting blog post:`, error); // Log generic error
-    // Add specific Prisma error handling if needed
+    console.error(`Error deleting blog post with ID ${id}:`, error); // Log generic error with ID using resolved id
+    // Handle Mongoose CastError for invalid ID format
+    if (error instanceof Error && error.name === 'CastError') {
+        return NextResponse.json({ error: 'Invalid blog post ID format.' }, { status: 400 });
+    }
     return NextResponse.json({ error: 'Failed to delete blog post' }, { status: 500 });
   }
 }

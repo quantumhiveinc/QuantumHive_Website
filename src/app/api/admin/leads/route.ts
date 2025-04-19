@@ -1,10 +1,9 @@
 // src/app/api/admin/leads/route.ts
 import { NextResponse, NextRequest } from 'next/server';
-// Ensure Prisma types are imported correctly
-import { Prisma } from '@prisma/client';
 import { auth } from '@/auth'; // Assuming auth setup in src/auth.ts
-// Ensure prisma instance is imported correctly
-import prisma from '@/lib/prisma'; // Assuming shared prisma client
+import dbConnect from '@/lib/mongoose'; // Import Mongoose connection
+import Lead, { ILead } from '@/models/Lead'; // Restore ILead import
+import { FilterQuery } from 'mongoose'; // Restore FilterQuery import
 
 const ALLOWED_SORT_FIELDS = ['fullName', 'email', 'sourceFormName', 'status', 'submissionTimestamp'];
 
@@ -40,22 +39,21 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ message: 'Invalid sortOrder parameter. Use "asc" or "desc".' }, { status: 400 });
         }
 
-        // 3. Build Prisma Where Clause
-        // 3. Build Prisma Where Clause - Restore explicit type
-        const where: Prisma.LeadWhereInput = {};
+        // 3. Build Mongoose Filter Object
+        const filter: FilterQuery<ILead> = {}; // Restore FilterQuery type
 
         if (filterFormName) {
-            where.sourceFormName = filterFormName;
+            filter.sourceFormName = filterFormName;
         }
         if (filterStatus) {
-            where.status = filterStatus;
+            filter.status = filterStatus;
         }
         if (filterStartDate || filterEndDate) {
-            where.submissionTimestamp = {};
+            filter.submissionTimestamp = {};
             if (filterStartDate) {
                 try {
-                    where.submissionTimestamp.gte = new Date(filterStartDate);
-                } catch { // Keep unused variable removed
+                    filter.submissionTimestamp.$gte = new Date(filterStartDate);
+                } catch {
                     return NextResponse.json({ message: 'Invalid filterStartDate format. Use ISO date string.' }, { status: 400 });
                 }
             }
@@ -64,38 +62,38 @@ export async function GET(request: NextRequest) {
                     // Add 1 day to make the end date inclusive
                     const endDate = new Date(filterEndDate);
                     endDate.setDate(endDate.getDate() + 1);
-                    where.submissionTimestamp.lt = endDate;
-                } catch { // Keep unused variable removed
+                    filter.submissionTimestamp.$lt = endDate;
+                } catch {
                     return NextResponse.json({ message: 'Invalid filterEndDate format. Use ISO date string.' }, { status: 400 });
                 }
             }
         }
         if (searchQuery) {
-            where.OR = [
-                { fullName: { contains: searchQuery, mode: 'insensitive' } },
-                { email: { contains: searchQuery, mode: 'insensitive' } },
-                { company: { contains: searchQuery, mode: 'insensitive' } },
+            const searchRegex = { $regex: searchQuery, $options: 'i' }; // Case-insensitive regex
+            filter.$or = [
+                { fullName: searchRegex },
+                { email: searchRegex },
+                { company: searchRegex },
             ];
         }
 
-        // 4. Build Prisma OrderBy Clause - Restore explicit type
-        const orderBy: Prisma.LeadOrderByWithRelationInput = {
+        // 4. Build Mongoose Sort Object
+        const sort: { [key: string]: 'asc' | 'desc' } = {
             [sortBy]: sortOrder,
         };
 
         // 5. Calculate Pagination
         const skip = (page - 1) * limit;
-        const take = limit;
 
-        // 6. Execute Prisma Queries (Fetch Leads + Count)
-        const [leads, totalCount] = await prisma.$transaction([
-            prisma.lead.findMany({
-                where,
-                orderBy,
-                skip,
-                take,
-            }),
-            prisma.lead.count({ where }),
+        // 6. Execute Mongoose Queries (Fetch Leads + Count)
+        await dbConnect(); // Ensure DB connection
+        const [leads, totalCount] = await Promise.all([
+            Lead.find(filter)
+                .sort(sort)
+                .skip(skip)
+                .limit(limit)
+                .exec(),
+            Lead.countDocuments(filter).exec(),
         ]);
 
         // 7. Calculate Total Pages
@@ -111,15 +109,12 @@ export async function GET(request: NextRequest) {
 
     } catch (error) {
         console.error("Error fetching leads:", error);
-        // Log the specific error for debugging
-        if (error instanceof Prisma.PrismaClientKnownRequestError) {
-             // Handle known Prisma errors specifically if needed
-             return NextResponse.json({ message: 'Database error occurred.', error: error.message }, { status: 500 });
-        } else if (error instanceof Error) {
-             return NextResponse.json({ message: 'An unexpected error occurred.', error: error.message }, { status: 500 });
-        } else {
-             return NextResponse.json({ message: 'An unknown error occurred.' }, { status: 500 });
+        // Handle Mongoose errors
+        if (error instanceof Error && error.name === 'CastError') {
+            return NextResponse.json({ message: 'Invalid ID format in query.' }, { status: 400 });
         }
+        // Generic error handling
+        return NextResponse.json({ message: 'An error occurred while fetching leads.' }, { status: 500 });
     }
 }
 
@@ -153,9 +148,10 @@ export async function POST(request: NextRequest) {
 
        // More specific validation (e.g., email format) can be added here
 
-        // Create lead in database
-        const newLead = await prisma.lead.create({
-            data: {
+        await dbConnect(); // Ensure DB connection
+        // Create lead in database using Mongoose
+        const newLead = await Lead.create({
+            // data: { // Mongoose doesn't use 'data' wrapper
                 fullName,
                 email,
                 phone,
@@ -165,8 +161,8 @@ export async function POST(request: NextRequest) {
                 sourceFormName,
                 submissionUrl,
                 status: 'New', // Default status
-                // submissionTimestamp is handled by Prisma's default @default(now())
-            },
+                // submissionTimestamp is handled by Mongoose schema's default
+            // }, // Mongoose doesn't use 'data' wrapper
         });
 
         return NextResponse.json(newLead, { status: 201 }); // 201 Created
@@ -176,16 +172,17 @@ export async function POST(request: NextRequest) {
 
         if (error instanceof SyntaxError) { // Handle JSON parsing errors
              return NextResponse.json({ message: 'Invalid JSON payload' }, { status: 400 });
-        } else if (error instanceof Prisma.PrismaClientKnownRequestError) {
-            // Handle specific Prisma errors (e.g., unique constraint violation)
-            if (error.code === 'P2002') { // Unique constraint failed
-                 return NextResponse.json({ message: 'Lead with this email/phone might already exist.' }, { status: 409 }); // 409 Conflict
-            }
-            return NextResponse.json({ message: 'Database error occurred.', error: error.message }, { status: 500 });
-        } else if (error instanceof Error) {
-             return NextResponse.json({ message: 'An unexpected error occurred.', error: error.message }, { status: 500 });
-        } else {
-             return NextResponse.json({ message: 'An unknown error occurred.' }, { status: 500 });
         }
+        // Handle Mongoose specific errors
+        if (typeof error === 'object' && error !== null && 'code' in error && error.code === 11000) {
+            // Unique constraint violation (likely email if schema defines it)
+            return NextResponse.json({ message: 'Lead with this email might already exist.' }, { status: 409 }); // 409 Conflict
+        }
+        if (error instanceof Error && error.name === 'ValidationError') {
+            // Extract specific validation messages if needed
+            return NextResponse.json({ message: `Validation failed: ${error.message}` }, { status: 400 });
+        }
+        // Generic error handling
+        return NextResponse.json({ message: 'An error occurred while creating the lead.' }, { status: 500 });
     }
 }

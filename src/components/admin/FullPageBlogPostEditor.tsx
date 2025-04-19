@@ -24,9 +24,9 @@ import {
     AccordionTrigger,
 } from "@/components/ui/accordion";
 // TODO: Add toast notifications for upload status/errors (e.g., react-hot-toast)
-// TODO: Import more specific types later if needed from Prisma or a central types file
 
-// Basic types for fetched data (replace with Prisma types if available client-side)
+
+// Basic types for fetched data
 interface Author { id: number; name: string; }
 interface Category { id: number; name: string; }
 // Removed unused Tag interface
@@ -500,9 +500,9 @@ export default function FullPageBlogPostEditor({ initialData, onSave, onCancel }
                                                     rel="noopener noreferrer"
                                                     className="underline hover:text-primary"
                                                 >
-                                                    {featuredImagePhotographerName || 'Unknown Photographer'}
-                                                </a>{' '}
-                                                on{' '}
+                                                    {featuredImagePhotographerName}
+                                                </a>
+                                                {' '}on{' '}
                                                 <a
                                                     href={`${featuredImageUnsplashUrl}?utm_source=quantumhive_website&utm_medium=referral`}
                                                     target="_blank"
@@ -522,24 +522,22 @@ export default function FullPageBlogPostEditor({ initialData, onSave, onCancel }
                         <AccordionItem value="item-2">
                             <AccordionTrigger>Categories</AccordionTrigger>
                             <AccordionContent>
-                                <div className="space-y-2 pt-2"> {/* Added pt-2 */}
-                                    <div className="max-h-40 overflow-y-auto space-y-2 rounded-md border p-2">
-                                        {availableCategories.length > 0 ? availableCategories.map(category => (
-                                            <div key={category.id} className="flex items-center space-x-2">
-                                                <Checkbox
-                                                    id={`category-${category.id}`}
-                                                    checked={selectedCategoryIds.has(category.id)}
-                                                    onCheckedChange={(checked) => handleCategoryChange(category.id, !!checked)}
-                                                />
-                                                <label
-                                                    htmlFor={`category-${category.id}`}
-                                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-black" // Added text-black
-                                                >
-                                                    {category.name}
-                                                </label>
-                                            </div>
-                                        )) : <p className="text-sm text-black">No categories found.</p>} {/* Replaced text-muted-foreground */}
-                                    </div>
+                                <div className="space-y-2 pt-2 max-h-40 overflow-y-auto"> {/* Added pt-2, scroll */}
+                                    {availableCategories.length > 0 ? availableCategories.map(category => (
+                                        <div key={category.id} className="flex items-center space-x-2">
+                                            <Checkbox
+                                                id={`category-${category.id}`}
+                                                checked={selectedCategoryIds.has(category.id)}
+                                                onCheckedChange={(checked) => handleCategoryChange(category.id, !!checked)}
+                                            />
+                                            <label
+                                                htmlFor={`category-${category.id}`}
+                                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-black"
+                                            >
+                                                {category.name}
+                                            </label>
+                                        </div>
+                                    )) : <p className="text-sm text-muted-foreground">No categories found.</p>}
                                 </div>
                             </AccordionContent>
                         </AccordionItem>
@@ -553,21 +551,21 @@ export default function FullPageBlogPostEditor({ initialData, onSave, onCancel }
                                          {currentTags.map(tag => (
                                             <Badge key={tag} variant="secondary" className="flex items-center gap-1">
                                                 {tag}
-                                                <button onClick={() => removeTag(tag)} className="ml-1 rounded-full hover:bg-muted-foreground/20 p-0.5">
+                                                <button type="button" onClick={() => removeTag(tag)} className="rounded-full hover:bg-muted-foreground/20 p-0.5">
                                                     <LucideX size={12} />
                                                 </button>
                                             </Badge>
                                         ))}
                                         <Input
-                                            id="tags-input"
+                                            type="text"
                                             value={tagInput}
                                             onChange={handleTagInputChange}
                                             onKeyDown={handleTagInputKeyDown}
                                             placeholder="Add tags..."
-                                            className="flex-grow border-none shadow-none focus-visible:ring-0 h-auto p-1 text-black" // Adjusted styling
+                                            className="flex-grow border-none focus:ring-0 h-auto p-0 text-sm"
                                         />
                                     </div>
-                                    <p className="text-sm text-muted-foreground">Enter tags separated by comma or Enter.</p> {/* Added helper text */}
+                                    <p className="text-xs text-muted-foreground">Press Enter or comma to add a tag.</p>
                                 </div>
                             </AccordionContent>
                         </AccordionItem>
@@ -580,9 +578,10 @@ export default function FullPageBlogPostEditor({ initialData, onSave, onCancel }
                                     <Select
                                         value={authorId?.toString() || ''}
                                         onValueChange={(value) => setAuthorId(value ? parseInt(value, 10) : null)}
+                                        disabled={availableAuthors.length === 0}
                                     >
-                                        <SelectTrigger id="author-select">
-                                            <SelectValue placeholder="Select an author" />
+                                        <SelectTrigger className="w-full">
+                                            <SelectValue placeholder="Select author" />
                                         </SelectTrigger>
                                         <SelectContent>
                                             {availableAuthors.map(author => (
@@ -596,18 +595,18 @@ export default function FullPageBlogPostEditor({ initialData, onSave, onCancel }
                             </AccordionContent>
                         </AccordionItem>
 
-                        {/* Gallery Section */}
+                         {/* Gallery Section */}
                         <AccordionItem value="item-5">
                             <AccordionTrigger>Image Gallery</AccordionTrigger>
                             <AccordionContent>
                                 <div className="space-y-2 pt-2"> {/* Added pt-2 */}
-                                    <div
+                                     <div
                                         {...getGalleryRootProps()}
                                         className={`border-2 border-dashed rounded-md p-6 text-center cursor-pointer ${isGalleryDragActive ? 'border-primary' : 'border-muted-foreground/50'} hover:border-primary transition-colors`}
                                     >
                                         <input {...getGalleryInputProps()} />
                                         {isUploadingGallery ? (
-                                            <p className="text-black">Uploading...</p>
+                                            <p className="text-black">Uploading gallery images...</p>
                                         ) : isGalleryDragActive ? (
                                             <p className="text-black">Drop images here...</p>
                                         ) : (
@@ -615,10 +614,11 @@ export default function FullPageBlogPostEditor({ initialData, onSave, onCancel }
                                         )}
                                     </div>
                                     {uploadErrorGallery && <p className="text-sm text-destructive mt-1">{uploadErrorGallery}</p>}
-                                    <div className="grid grid-cols-3 gap-2 mt-4 max-h-60 overflow-y-auto">
+                                    {/* Gallery Preview */}
+                                     <div className="mt-4 grid grid-cols-3 gap-2">
                                          {galleryImages.map((image, index) => (
                                             <div key={index} className="relative group aspect-square">
-                                                 <Image
+                                                <Image
                                                     src={image.url}
                                                     alt={image.altText || `Gallery image ${index + 1}`}
                                                     layout="fill"
@@ -626,7 +626,7 @@ export default function FullPageBlogPostEditor({ initialData, onSave, onCancel }
                                                     className="rounded"
                                                 />
                                                 <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-opacity flex items-center justify-center">
-                                                     <Button
+                                                    <Button
                                                         variant="destructive"
                                                         size="icon"
                                                         className="opacity-0 group-hover:opacity-100 transition-opacity"
@@ -635,62 +635,54 @@ export default function FullPageBlogPostEditor({ initialData, onSave, onCancel }
                                                     >
                                                         <LucideX size={16} />
                                                     </Button>
-                                                    {/* TODO: Add button/input for alt text */}
                                                 </div>
                                             </div>
                                         ))}
                                     </div>
-                                     {galleryImages.length === 0 && !isUploadingGallery && (
-                                        <p className="text-sm text-muted-foreground text-center mt-2">No gallery images uploaded yet.</p>
-                                     )}
+                                    {/* TODO: Add inputs for alt text for each gallery image */}
                                 </div>
                             </AccordionContent>
                         </AccordionItem>
 
-                        {/* YouTube URL Section */}
+                        {/* YouTube Video Section */}
                         <AccordionItem value="item-6">
                             <AccordionTrigger>YouTube Video</AccordionTrigger>
                             <AccordionContent>
                                 <div className="space-y-2 pt-2"> {/* Added pt-2 */}
+                                    <Label htmlFor="youtube-url" className="text-black">YouTube Video URL</Label>
                                     <Input
                                         id="youtube-url"
                                         placeholder="https://www.youtube.com/watch?v=..."
                                         value={youtubeUrl || ''}
                                         onChange={(e) => setYoutubeUrl(e.target.value)}
-                                        className="text-black"
                                     />
                                 </div>
                             </AccordionContent>
                         </AccordionItem>
 
-                    </Accordion> {/* End Accordion */}
+                    </Accordion>
 
-                    {/* Action Buttons Moved to Bottom */}
+                    {/* Action Buttons - Pushed to bottom */}
                     <div className="flex justify-end gap-2 pt-4 border-t mt-auto"> {/* Use mt-auto to push to bottom */}
-                        <Button
-                            onClick={handleCancel} // Use new handler
-                            variant="outline" // Secondary action style
-                        >
+                        <Button variant="outline" onClick={handleCancel} disabled={isUploading}>
                             Cancel
                         </Button>
                         <Button
-                            onClick={() => handleSave(false)} // Save as draft
-                            disabled={!canSaveDraft || isUploading}
-                            variant="outline" // Keep outline for draft
+                            onClick={() => handleSave(false)}
+                            disabled={isUploading || !canSaveDraft}
+                            variant="secondary"
                         >
-                            {isUploading ? 'Uploading...' : 'Save Draft'}
+                            {isUploading ? 'Saving...' : 'Save Draft'}
                         </Button>
                         <Button
-                            onClick={() => handleSave(true)} // Publish
-                            disabled={!canPublish || isUploading}
-                            // Primary action style (default)
+                            onClick={() => handleSave(true)}
+                            disabled={isUploading || !canPublish}
                         >
-                            {isUploading ? 'Uploading...' : (initialData?.id ? 'Update & Publish' : 'Publish')}
+                            {isUploading ? 'Publishing...' : 'Publish'}
                         </Button>
-                    </div> {/* End Action Buttons Container */}
-
-                </div> {/* End Sidebar */}
-            </div> {/* End Main Content Grid */}
-        </div> /* End Root Container */
+                    </div>
+                </div>
+            </div>
+        </div>
     );
 }

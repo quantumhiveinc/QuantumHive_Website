@@ -1,23 +1,23 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { auth } from '@/auth';
-import { PrismaClient } from '@prisma/client';
+import dbConnect from '@/lib/mongoose'; // Import Mongoose connection
+import Setting, { ISetting } from '@/models/Setting'; // Import Mongoose model and interface
+import { FilterQuery } from 'mongoose'; // Import FilterQuery
 import { encrypt, decrypt, EncryptionError, DecryptionError } from '@/lib/encryption'; // Import from utility
-
-const prisma = new PrismaClient();
 
 // Define which keys should be encrypted/decrypted
 const SENSITIVE_KEYS = ['unsplash_access_key', 'unsplash_secret_key'];
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) { // Use NextRequest for consistency
     const session = await auth();
 
-    // 1. Authentication Check
-    if (!session || !session.user) { // TODO: Add role check
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // 1. Authentication Check & Authorization (Assume Admin for settings)
+    if (!session?.user || session.user.role !== 'ADMIN') {
+        return NextResponse.json({ error: 'Unauthorized: Admin role required' }, { status: 403 });
     }
 
-    const prismaConnected = true; // Flag to track connection state
     try {
+        await dbConnect(); // Ensure DB connection
         const body = await request.json();
         const { category, ...settingsToSave } = body;
 
@@ -29,31 +29,50 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'No settings provided to save' }, { status: 400 });
         }
 
-        // 2. Prepare data for upsert
-        const operations = Object.entries(settingsToSave).map(([key, value]) => {
+        // 2. Process and save settings using Mongoose findOneAndUpdate (upsert)
+        const savePromises = Object.entries(settingsToSave).map(async ([key, value]) => {
             if (typeof value !== 'string') {
                 console.warn(`Skipping non-string value for key: ${key}`);
-                return null;
+                return null; // Skip non-string values
             }
 
-            // Use the imported encrypt function
-            const finalValue = SENSITIVE_KEYS.includes(key) ? encrypt(value) : value;
+            try {
+                // Encrypt if sensitive
+                const finalValue = SENSITIVE_KEYS.includes(key) ? encrypt(value) : value;
 
-            return prisma.setting.upsert({ // Use correct lowercase casing: setting
-                where: { key: key },
-                update: { value: finalValue, category: category },
-                create: { key: key, value: finalValue, category: category },
-            });
+                // Use findOneAndUpdate with upsert: true
+                await Setting.findOneAndUpdate(
+                    { key: key }, // Find by key
+                    { value: finalValue, category: category }, // Data to set on update/create
+                    { upsert: true, new: true, runValidators: true } // Options: create if not found, return new doc, run schema validation
+                );
+                return key; // Return key on success
+            } catch (error) {
+                 // Catch errors during encryption or DB operation for a single key
+                 console.error(`Failed to save setting for key "${key}":`, error);
+                 // Re-throw specific errors to be caught by the outer catch block
+                 if (error instanceof EncryptionError) throw error;
+                 if (error instanceof Error && error.name === 'ValidationError') throw error;
+                 // Throw a generic error for other DB issues related to this key
+                 throw new Error(`Database operation failed for key "${key}"`);
+            }
         });
 
-        const validOperations = operations.filter(op => op !== null);
+        // 3. Wait for all operations to complete
+        const results = await Promise.allSettled(savePromises);
 
-        // 3. Execute transactions
-        if (validOperations.length > 0) {
-            await prisma.$transaction(validOperations);
-        } else {
-            console.log("No valid settings operations to perform.");
+        // Optional: Check results for individual failures if needed
+        const failedKeys = results
+            .filter(r => r.status === 'rejected')
+            .map((r: PromiseRejectedResult) => r.reason?.message || 'Unknown error'); // Extract reason
+
+        if (failedKeys.length > 0) {
+             console.error("Some settings failed to save:", failedKeys);
+             // Decide if partial success is acceptable or return a specific error
+             // For simplicity, returning a general error if any key failed
+             return NextResponse.json({ error: `Failed to save some settings. Check logs. Failures: ${failedKeys.join(', ')}` }, { status: 500 });
         }
+
 
         return NextResponse.json({ message: 'Settings saved successfully' }, { status: 200 });
 
@@ -62,44 +81,49 @@ export async function POST(request: Request) {
         if (error instanceof SyntaxError) {
             return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
         }
-        // Handle specific encryption errors
+        // Handle specific encryption errors (might be re-thrown from the loop)
         if (error instanceof EncryptionError) {
              return NextResponse.json({ error: `Failed to encrypt setting: ${error.message}` }, { status: 500 });
         }
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
-    } finally {
-        // Ensure disconnect is called only if prisma was potentially used
-        if (prismaConnected) {
-             try {
-                 await prisma.$disconnect();
-             } catch (disconnectError) {
-                 console.error("Failed to disconnect Prisma:", disconnectError);
-             }
+         // Handle Mongoose validation errors (might be re-thrown from the loop)
+        if (error instanceof Error && error.name === 'ValidationError') {
+            return NextResponse.json({ error: `Validation failed: ${error.message}` }, { status: 400 });
         }
+        // Handle Mongoose unique constraint errors (for key)
+        if (typeof error === 'object' && error !== null && 'code' in error && error.code === 11000) {
+             return NextResponse.json({ error: 'Setting key constraint violation.' }, { status: 409 });
+        }
+        // Use the error message if it was thrown from the loop
+        if (error instanceof Error && error.message.startsWith('Database operation failed for key')) {
+             return NextResponse.json({ error: error.message }, { status: 500 });
+        }
+        return NextResponse.json({ error: 'Internal Server Error during settings update.' }, { status: 500 });
     }
+    // No finally block needed for Mongoose connection management here
 }
 
 // GET handler to fetch settings
 export async function GET(request: NextRequest) {
     const session = await auth();
 
-    // 1. Authentication Check
-    if (!session || !session.user) { // TODO: Add role check
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // 1. Authentication Check & Authorization (Assume Admin for settings)
+    if (!session?.user || session.user.role !== 'ADMIN') {
+        return NextResponse.json({ error: 'Unauthorized: Admin role required' }, { status: 403 });
     }
 
-    const prismaConnected = true; // Flag to track connection state
     try {
+        await dbConnect(); // Ensure DB connection
         // Optional: Filter by category if needed, using URL query parameters
         const { searchParams } = new URL(request.url);
         const category = searchParams.get('category');
 
-        const whereClause = category ? { category: category } : {};
+        const filter: FilterQuery<ISetting> = {}; // Use Mongoose FilterQuery
+        if (category) {
+            filter.category = category;
+        }
 
-        // 2. Fetch settings from DB
-        const settingsFromDb = await prisma.setting.findMany({ // Use correct lowercase casing: setting
-             where: whereClause,
-        });
+        // 2. Fetch settings from DB using Mongoose
+        const settingsFromDb: ISetting[] = await Setting.find(filter);
 
         // 3. Process and decrypt sensitive settings
         const settings: { [key: string]: string } = {};
@@ -129,16 +153,12 @@ export async function GET(request: NextRequest) {
         console.error('Failed to fetch settings:', error);
          // Handle potential decryption config errors (like missing key) caught during decrypt calls
         if (error instanceof DecryptionError) {
-             return NextResponse.json({ error: `Configuration error during decryption: ${error.message}` }, { status: 500 });
+             // Log the specific error but return a generic message to the client
+             console.error("Decryption configuration error:", error.message);
+             return NextResponse.json({ error: 'Server configuration error prevented settings retrieval.' }, { status: 500 });
         }
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
-    } finally {
-         if (prismaConnected) {
-             try {
-                 await prisma.$disconnect();
-             } catch (disconnectError) {
-                 console.error("Failed to disconnect Prisma:", disconnectError);
-             }
-        }
+        // Handle other potential errors during fetch
+        return NextResponse.json({ error: 'Internal Server Error while fetching settings.' }, { status: 500 });
     }
+    // No finally block needed for Mongoose connection management here
 }

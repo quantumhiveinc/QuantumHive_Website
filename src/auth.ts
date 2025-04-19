@@ -5,10 +5,8 @@
 
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials'; // Restore Credentials provider
-// import { PrismaAdapter } from "@auth/prisma-adapter"; // Keep commented for now
-// import prisma from "@/lib/prisma"; // Keep commented for now
+
 export const { handlers: { GET, POST }, auth, signIn, signOut } = NextAuth({
-  // adapter: PrismaAdapter(prisma), // Keep commented for now
   providers: [
     Credentials({
       // The name to display on the sign in form (e.g. "Sign in with...")

@@ -1,21 +1,14 @@
 // src/app/api/admin/categories/[id]/route.ts
 import { NextResponse, NextRequest } from 'next/server';
 import { auth } from '@/auth';
-import prisma from '@/lib/prisma';
-import { Prisma } from '@prisma/client'; // Import only Prisma namespace
 import { slugify } from '@/lib/slugify';
-
-// Removed unused RouteContext interface
-// interface RouteContext {
-//     params: {
-//         id: string;
-//     };
-// }
+import Category from '@/models/Category';
+import dbConnect from '@/lib/mongoose';
 
 // GET /api/admin/categories/[id] - Fetches a single category by ID
 export async function GET(
     request: NextRequest,
-    { params: paramsPromise }: { params: Promise<{ id: string }> } // Type params as Promise
+    { params }: { params: Promise<{ id: string }> } // Correctly typed params
 ) {
     const session = await auth();
     // Allow any authenticated user to fetch category details. Adjust if needed.
@@ -23,16 +16,13 @@ export async function GET(
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const params = await paramsPromise; // Await the params promise
-    const categoryId = parseInt(params.id, 10); // Access id from resolved params
-    if (isNaN(categoryId)) {
-        return NextResponse.json({ error: 'Invalid category ID format.' }, { status: 400 });
-    }
+    // Await the params promise here, before the try block, so categoryId is available in catch
+    const resolvedParams = await params;
+    const categoryId = resolvedParams.id; // Use the ID as a string for MongoDB
 
     try {
-        const category = await prisma.category.findUnique({
-            where: { id: categoryId },
-        });
+        await dbConnect();
+        const category = await Category.findById(categoryId);
 
         if (!category) {
             return NextResponse.json({ error: 'Category not found.' }, { status: 404 });
@@ -49,7 +39,7 @@ export async function GET(
 // PUT /api/admin/categories/[id] - Updates an existing category
 export async function PUT(
     request: NextRequest,
-    { params: paramsPromise }: { params: Promise<{ id: string }> } // Type params as Promise
+    { params }: { params: Promise<{ id: string }> } // Correctly typed params
 ) {
     const session = await auth();
     // Only ADMINs can update categories
@@ -57,11 +47,9 @@ export async function PUT(
         return NextResponse.json({ error: 'Unauthorized: Admin role required.' }, { status: 403 });
     }
 
-    const params = await paramsPromise; // Await the params promise
-    const categoryId = parseInt(params.id, 10); // Access id from resolved params
-    if (isNaN(categoryId)) {
-        return NextResponse.json({ error: 'Invalid category ID format.' }, { status: 400 });
-    }
+    // Await the params promise here, before the try block, so categoryId is available in catch
+    const resolvedParams = await params;
+    const categoryId = resolvedParams.id; // Use the ID as a string for MongoDB
 
     try {
         const body = await request.json();
@@ -72,14 +60,14 @@ export async function PUT(
             return NextResponse.json({ error: 'Category name cannot be empty if provided.' }, { status: 400 });
         }
 
+        await dbConnect();
         // Check if category exists before attempting update
-        const existingCategory = await prisma.category.findUnique({ where: { id: categoryId } });
+        const existingCategory = await Category.findById(categoryId);
         if (!existingCategory) {
             return NextResponse.json({ error: 'Category not found.' }, { status: 404 });
         }
 
         // Prepare update data - only update if name is provided and different
-        // Define type for dataToUpdate inline
         const dataToUpdate: { name?: string; slug?: string } = {};
         let slug = existingCategory.slug; // Keep existing slug by default
 
@@ -97,30 +85,26 @@ export async function PUT(
         }
 
         // Perform the update
-        const updatedCategory = await prisma.category.update({
-            where: { id: categoryId },
-            data: dataToUpdate,
-        });
+        const updatedCategory = await Category.findByIdAndUpdate(categoryId, dataToUpdate, { new: true });
 
-        console.log(`[API] Category updated: ${updatedCategory.name} (ID: ${updatedCategory.id})`);
+        console.log(`[API] Category updated: ${updatedCategory.name} (ID: ${updatedCategory._id})`);
         return NextResponse.json(updatedCategory); // 200 OK with updated data
 
-    } catch (error: unknown) {
-        // Cannot access categoryId directly here if promise awaited inside try
-        console.error(`Error updating category:`, error); // Log generic error
-        // Handle unique constraint violations (for name or slug)
-        if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002' && 'meta' in error && typeof error.meta === 'object' && error.meta !== null && 'target' in error.meta && Array.isArray(error.meta.target) && (error.meta.target.includes('slug') || error.meta.target.includes('name'))) {
-             return NextResponse.json({ error: 'A category with this name or a similar generated identifier already exists.' }, { status: 409 }); // 409 Conflict
-        }
-        // Handle other potential errors
-        return NextResponse.json({ error: 'Failed to update category due to a server error.' }, { status: 500 });
-    }
+   } catch (error: unknown) {
+       console.error(`Error updating category with ID ${categoryId}:`, error); // Log generic error, include ID if possible
+       // Handle unique constraint violations (for name or slug) - More robust check
+       if (typeof error === 'object' && error !== null && 'code' in error && error.code === 11000 && 'keyPattern' in error && typeof error.keyPattern === 'object' && error.keyPattern !== null && ('slug' in error.keyPattern || 'name' in error.keyPattern)) {
+           return NextResponse.json({ error: 'A category with this name or a similar generated identifier already exists.' }, { status: 409 }); // 409 Conflict
+       }
+       // Handle other potential errors
+       return NextResponse.json({ error: 'Failed to update category due to a server error.' }, { status: 500 });
+   }
 }
 
 // DELETE /api/admin/categories/[id] - Deletes a category
 export async function DELETE(
     request: NextRequest,
-    { params: paramsPromise }: { params: Promise<{ id: string }> } // Type params as Promise
+    { params }: { params: Promise<{ id: string }> } // Correctly typed params
 ) {
     const session = await auth();
     // Only ADMINs can delete categories
@@ -128,41 +112,30 @@ export async function DELETE(
         return NextResponse.json({ error: 'Unauthorized: Admin role required.' }, { status: 403 });
     }
 
-    const params = await paramsPromise; // Await the params promise
-    const categoryId = parseInt(params.id, 10); // Access id from resolved params
-    if (isNaN(categoryId)) {
-        return NextResponse.json({ error: 'Invalid category ID format.' }, { status: 400 });
-    }
+    // Await the params promise here, before the try block, so categoryId is available in catch
+    const resolvedParams = await params;
+    const categoryId = resolvedParams.id; // Use the ID as a string for MongoDB
 
     try {
+        await dbConnect();
         // Use transaction to ensure category exists before delete and handle potential errors gracefully
-        // Use the correct type for the transaction client 'tx'
-        const deletedCategory = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-             const category = await tx.category.findUnique({
-                 where: { id: categoryId },
-                 select: { name: true } // Only select necessary field for logging
-             });
-             if (!category) {
-                 // Throw a specific error to be caught outside the transaction
-                 throw new Error('CategoryNotFound');
-             }
-             // Deleting a category automatically disconnects it from related BlogPosts
-             // because Prisma manages the implicit many-to-many relation table.
-             await tx.category.delete({ where: { id: categoryId } });
-             return category; // Return the name for logging purposes
-        });
+        const existingCategory = await Category.findById(categoryId);
+        if (!existingCategory) {
+            return NextResponse.json({ error: 'Category not found.' }, { status: 404 });
+        }
 
+        // Deleting a category automatically disconnects it from related BlogPosts
+        await Category.findByIdAndDelete(categoryId);
 
-        console.log(`[API] Category deleted: ${deletedCategory.name} (ID: ${categoryId})`);
+        console.log(`[API] Category deleted: ${existingCategory.name} (ID: ${categoryId})`);
         // Return 204 No Content for successful deletion as per HTTP standards
         return new NextResponse(null, { status: 204 });
 
     } catch (error: unknown) {
-        // Cannot access categoryId directly here if promise awaited inside try
-        console.error(`Error deleting category:`, error); // Log generic error
-        // Catch the specific error thrown from the transaction
-        if (error instanceof Error && error.message === 'CategoryNotFound') {
-            return NextResponse.json({ error: 'Category not found.' }, { status: 404 });
+        console.error(`Error deleting category with ID ${categoryId}:`, error); // Log generic error, include ID if possible
+        // Catch the specific error thrown from the transaction - More robust check
+        if (typeof error === 'object' && error !== null && 'name' in error && error.name === 'CastError' && 'kind' in error && error.kind === 'ObjectId') {
+          return NextResponse.json({ error: 'Invalid category ID format or category not found.' }, { status: 404 }); // More specific error message
         }
         // Handle other potential errors (e.g., database connection issues)
         return NextResponse.json({ error: 'Failed to delete category due to a server error.' }, { status: 500 });
@@ -176,17 +149,16 @@ export async function DELETE(
  * @param excludeCategoryId The ID of the category being updated (to exclude from the uniqueness check).
  * @returns A unique slug string.
  */
-async function generateUniqueCategorySlug(name: string, excludeCategoryId: number): Promise<string> {
+async function generateUniqueCategorySlug(name: string, excludeCategoryId: string): Promise<string> {
     const baseSlug = slugify(name); // Use the imported slugify function
     let potentialSlug = baseSlug;
     let counter = 1;
 
+    await dbConnect();
     // Check if the generated slug already exists for a *different* category
-    while (await prisma.category.findFirst({
-        where: {
-            slug: potentialSlug,
-            id: { not: excludeCategoryId } // Exclude the current category from the check
-        }
+    while (await Category.findOne({
+        slug: potentialSlug,
+        _id: { $ne: excludeCategoryId } // Exclude the current category from the check
      })) {
         // If it exists, append a counter and check again
         potentialSlug = `${baseSlug}-${counter}`;

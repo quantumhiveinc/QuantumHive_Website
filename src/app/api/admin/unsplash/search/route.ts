@@ -1,10 +1,9 @@
 // src/app/api/admin/unsplash/search/route.ts
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
-import { PrismaClient } from '@prisma/client';
+import dbConnect from '@/lib/mongoose'; // Import Mongoose connection
+import Setting from '@/models/Setting'; // Import Mongoose model
 import { decrypt, DecryptionError } from '@/lib/encryption'; // Import decrypt and error type
-
-const prisma = new PrismaClient();
 
 export async function GET(request: Request) {
   const session = await auth();
@@ -13,15 +12,13 @@ export async function GET(request: Request) {
  }
 
  let unsplashAccessKey: string | null = null;
-const prismaConnected = true; // Flag for finally block
 
-try { // Outer try block for the entire operation including Prisma disconnect
+try { // Outer try block for the entire operation
 
   // --- Fetch and Decrypt Key ---
   try {
-    const setting = await prisma.setting.findUnique({ // Corrected: lowercase 'setting'
-      where: { key: 'unsplash_access_key' },
-    });
+    await dbConnect(); // Ensure DB connection
+    const setting = await Setting.findOne({ key: 'unsplash_access_key' }); // Use Mongoose findOne
 
     if (!setting || !setting.value) {
       console.error('Unsplash Access Key not found in database settings.');
@@ -46,7 +43,7 @@ try { // Outer try block for the entire operation including Prisma disconnect
     }
   } catch (dbError: unknown) {
     console.error('Error fetching/processing Unsplash key from DB:', dbError);
-    // Avoid returning specific Prisma errors to the client
+    // Avoid returning specific DB errors to the client
     return NextResponse.json({ error: 'Failed to retrieve Unsplash configuration.' }, { status: 500 });
   }
   // --- End Fetch and Decrypt Key ---
@@ -121,15 +118,8 @@ try { // Outer try block for the entire operation including Prisma disconnect
 
 } catch (error: unknown) { // Outer catch for general errors
   console.error('Error in Unsplash search route:', error);
-  // Handle specific Prisma errors if necessary, otherwise generic error
+  // Handle specific errors if necessary, otherwise generic error
   return NextResponse.json({ error: 'Failed to process Unsplash search request' }, { status: 500 });
-} finally { // Outer finally
-  if (prismaConnected) {
-    try {
-      await prisma.$disconnect();
-    } catch (disconnectError) {
-      console.error("Failed to disconnect Prisma in Unsplash search:", disconnectError);
-    }
-  }
 }
+// No finally block needed for Mongoose connection management here
 }

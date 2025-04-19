@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 // TODO: Add toast notifications
 
-// Define Category type (ideally import from shared types or Prisma)
+// Define Category type
 export interface CategoryFormData {
     id?: number;
     name: string;

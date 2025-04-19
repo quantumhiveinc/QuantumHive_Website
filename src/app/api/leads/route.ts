@@ -1,5 +1,6 @@
 import { NextResponse, NextRequest } from 'next/server';
-import prisma from '@/lib/prisma'; // Assuming default export from src/lib/prisma.ts
+import dbConnect from '@/lib/mongoose'; // Import Mongoose connection
+import Lead from '@/models/Lead'; // Import Mongoose model
 
 // Basic email validation regex (adjust as needed for robustness)
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -36,9 +37,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid email format.' }, { status: 400 });
     }
 
+    await dbConnect(); // Ensure DB connection
     // --- Create Lead Record ---
-    const newLead = await prisma.lead.create({
-      data: {
+    const newLead = await Lead.create({
+      // data: { // Mongoose doesn't use 'data' wrapper
         fullName: fullName.trim(),
         email: email.trim().toLowerCase(), // Store email in lowercase
         phone: phone?.toString().trim() || null, // Ensure phone is string or null
@@ -47,8 +49,8 @@ export async function POST(request: NextRequest) {
         sourceFormName: sourceFormName.trim(),
         submissionUrl: submissionUrl?.toString().trim() || null,
         ipAddress: ipAddress,
-        // submissionTimestamp and status have defaults in schema
-      },
+        // submissionTimestamp and status have defaults in Mongoose schema
+      // }, // Mongoose doesn't use 'data' wrapper
     });
 
     // --- Success Response ---
@@ -57,18 +59,15 @@ export async function POST(request: NextRequest) {
   } catch (error: unknown) {
     console.error('Lead submission error:', error);
 
-    // Handle potential Prisma errors (needs type checking for safety)
-    if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002') {
-      // Check if meta exists and is an object before accessing target
-      if ('meta' in error && typeof error.meta === 'object' && error.meta !== null && 'target' in error.meta) {
-        // Ensure target is an array or string before calling includes
-        const target = error.meta.target;
-        if ((Array.isArray(target) || typeof target === 'string') && target.includes('email')) {
-          // Specific error for duplicate email
-          return NextResponse.json({ error: 'This email address has already been submitted.' }, { status: 409 }); // 409 Conflict
-        }
-      }
-      // Handle other Prisma P2002 errors if needed, or fall through to generic error
+    // Handle Mongoose specific errors
+    if (typeof error === 'object' && error !== null && 'code' in error && error.code === 11000) {
+        // Unique constraint violation (likely email if schema defines it)
+        // Check keyPattern if more specific error needed: const keyPattern = (error as any).keyPattern;
+        return NextResponse.json({ error: 'This email address might already be submitted.' }, { status: 409 }); // 409 Conflict
+    }
+    if (error instanceof Error && error.name === 'ValidationError') {
+        // Extract specific validation messages if needed
+        return NextResponse.json({ error: `Validation failed: ${error.message}` }, { status: 400 });
     }
 
     // Handle JSON parsing errors

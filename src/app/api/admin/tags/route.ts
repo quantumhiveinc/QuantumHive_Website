@@ -1,7 +1,8 @@
 // src/app/api/admin/tags/route.ts
-import { NextResponse } from 'next/server'; // Remove unused NextRequest
+import { NextResponse } from 'next/server'; // Keep unused NextRequest removed
 import { auth } from '@/auth';
-import prisma from '@/lib/prisma';
+import dbConnect from '@/lib/mongoose'; // Import Mongoose connection
+import Tag from '@/models/Tag'; // Import Mongoose model
 
 // GET /api/admin/tags - Fetches all tags
 export async function GET() {
@@ -13,15 +14,12 @@ export async function GET() {
     }
 
     try {
-        const tags = await prisma.tag.findMany({
-            orderBy: { name: 'asc' }, // Order alphabetically for consistent dropdowns/lists
+        await dbConnect(); // Ensure DB connection
+        const tags = await Tag.find()
+            .sort({ name: 'asc' }) // Mongoose sort syntax
             // Select only the fields likely needed for a tag selector UI
-            select: {
-                id: true,
-                name: true,
-                slug: true
-            }
-        });
+            .select('_id name slug'); // Use _id for Mongoose, select fields
+
         return NextResponse.json(tags);
     } catch (error) {
         console.error("Error fetching tags:", error);

@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner"; // Assuming sonner is installed for toasts
 
-// Define Author type (ideally import from shared types or Prisma)
+// Define Author type
 interface Author {
     id: number;
     name: string;

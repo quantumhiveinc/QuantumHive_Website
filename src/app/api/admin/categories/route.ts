@@ -1,7 +1,8 @@
 // src/app/api/admin/categories/route.ts
 import { NextResponse, NextRequest } from 'next/server';
 import { auth } from '@/auth';
-import prisma from '@/lib/prisma';
+import dbConnect from '@/lib/mongoose'; // Import Mongoose connection
+import Category from '@/models/Category'; // Import Mongoose model
 import { slugify } from '@/lib/slugify';
 
 // GET /api/admin/categories - Fetches all categories
@@ -13,9 +14,9 @@ export async function GET() {
     }
 
     try {
-        const categories = await prisma.category.findMany({
-            orderBy: { name: 'asc' }, // Order alphabetically
-        });
+        await dbConnect(); // Ensure DB connection
+        const categories = await Category.find()
+            .sort({ name: 'asc' }); // Mongoose sort syntax
         return NextResponse.json(categories);
     } catch (error) {
         console.error("Error fetching categories:", error);
@@ -44,23 +45,31 @@ export async function POST(request: NextRequest) {
         // Generate a unique slug based on the name
         const slug = await generateUniqueCategorySlug(trimmedName);
 
-        // Create the category in the database
-        const newCategory = await prisma.category.create({
-            data: {
+        await dbConnect(); // Ensure DB connection
+        // Create the category in the database using Mongoose
+        const newCategory = await Category.create({
+            // data: { // Mongoose doesn't use 'data' wrapper
                 name: trimmedName,
                 slug,
-            },
+            // },
         });
 
-        console.log(`[API] Category created: ${newCategory.name} (ID: ${newCategory.id})`);
+        console.log(`[API] Category created: ${newCategory.name} (ID: ${newCategory._id})`); // Use _id for Mongoose
         return NextResponse.json(newCategory, { status: 201 }); // 201 Created
 
     } catch (error: unknown) {
         console.error("Error creating category:", error);
-        // Handle unique constraint violations (for name or slug)
-        if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002' && 'meta' in error && typeof error.meta === 'object' && error.meta !== null && 'target' in error.meta && Array.isArray(error.meta.target) && (error.meta.target.includes('slug') || error.meta.target.includes('name'))) {
-             // Provide a user-friendly message for unique constraint errors
-             return NextResponse.json({ error: 'A category with this name or a similar generated identifier already exists.' }, { status: 409 }); // 409 Conflict
+        // Handle Mongoose unique constraint errors (for name or slug)
+        if (typeof error === 'object' && error !== null && 'code' in error && error.code === 11000) {
+             const keyPattern = (error as { keyPattern?: Record<string, number> }).keyPattern;
+             if (keyPattern && (keyPattern.slug || keyPattern.name)) {
+                 return NextResponse.json({ error: 'A category with this name or a similar generated identifier already exists.' }, { status: 409 }); // 409 Conflict
+             }
+             return NextResponse.json({ error: 'A unique field constraint was violated.' }, { status: 409 });
+        }
+        // Handle Mongoose validation errors
+        if (error instanceof Error && error.name === 'ValidationError') {
+            return NextResponse.json({ error: `Validation failed: ${error.message}` }, { status: 400 });
         }
         // Handle other potential errors
         return NextResponse.json({ error: 'Failed to create category due to a server error.' }, { status: 500 });
@@ -78,8 +87,9 @@ async function generateUniqueCategorySlug(name: string): Promise<string> {
     let potentialSlug = baseSlug;
     let counter = 1;
 
-    // Check if the generated slug already exists
-    while (await prisma.category.findUnique({ where: { slug: potentialSlug } })) {
+    await dbConnect(); // Ensure DB connection
+    // Check if the generated slug already exists using Mongoose
+    while (await Category.findOne({ slug: potentialSlug })) {
         // If it exists, append a counter and check again
         potentialSlug = `${baseSlug}-${counter}`;
         counter++;

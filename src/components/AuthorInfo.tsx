@@ -5,7 +5,7 @@ import Link from 'next/link';
 // Import icons for social media if desired (e.g., from lucide-react)
 // import { Twitter, Linkedin } from 'lucide-react';
 
-// Define Author type (ideally import from Prisma types or shared types)
+// Define Author type
 export interface Author { // Add export keyword
     id: number;
     name: string;
